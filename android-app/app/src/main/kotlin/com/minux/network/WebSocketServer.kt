@@ -13,6 +13,7 @@ class WebSocketServer(
     private val onClientConnected: (String) -> Unit,
     private val onClientDisconnected: (String?) -> Unit,
     private val onMessageReceived: (JSONObject) -> Unit,
+    private val onPeerHello: (String, String) -> Unit,
 ) : NanoWSD(port) {
     private val sockets = ConcurrentHashMap.newKeySet<ClientSocket>()
 
@@ -30,6 +31,8 @@ class WebSocketServer(
         stop()
         Log.i(TAG, "WebSocket server stopped")
     }
+
+    fun hasConnections(): Boolean = sockets.isNotEmpty()
 
     fun broadcast(text: String) {
         sockets.forEach { socket ->
@@ -61,7 +64,13 @@ class WebSocketServer(
                 .getOrNull() ?: return
 
             when (payload.optString("type")) {
-                Protocol.TYPE_HELLO -> send(Protocol.helloAck(deviceName, PLATFORM_ANDROID).toString())
+                Protocol.TYPE_HELLO -> {
+                    val inner = payload.optJSONObject("payload")
+                    val peerName = inner?.optString("device_name").orEmpty()
+                    val peerPlatform = inner?.optString("platform").orEmpty()
+                    onPeerHello(peerName, peerPlatform)
+                    send(Protocol.helloAck(deviceName, PLATFORM_ANDROID).toString())
+                }
                 Protocol.TYPE_PING -> send(Protocol.pong().toString())
             }
             onMessageReceived(payload)

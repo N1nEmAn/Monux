@@ -11,6 +11,8 @@ TYPE_HELLO = "hello"
 TYPE_HELLO_ACK = "hello_ack"
 TYPE_PING = "ping"
 TYPE_PONG = "pong"
+TYPE_NOTIFY = "notify"
+TYPE_CLIPBOARD = "clipboard"
 
 
 @dataclass(slots=True)

@@ -19,14 +19,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.minux.ui.theme.MinuxTheme
 
-data class FeatureToggle(val name: String, val enabled: Boolean)
+data class FeatureToggle(val key: String, val name: String, val enabled: Boolean, val hint: String)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,15 +42,14 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun MainScreen() {
-    val toggles = remember {
-        mutableStateListOf(
-            FeatureToggle("通知镜像", true),
-            FeatureToggle("剪贴板", true),
-            FeatureToggle("短信", false),
-            FeatureToggle("文件快传", false),
-            FeatureToggle("投屏", false),
-        )
-    }
+    val state by MainService.stateFlow().collectAsState()
+    val toggles = listOf(
+        FeatureToggle("notifications", "通知镜像", state.featureFlags.notifications, if (state.notificationAccessGranted) "通知权限已就绪" else "需授予通知访问权限"),
+        FeatureToggle("clipboard", "剪贴板", state.featureFlags.clipboard, "通信链路已接入"),
+        FeatureToggle("sms", "短信", state.featureFlags.sms, "Phase 4"),
+        FeatureToggle("file", "文件快传", state.featureFlags.file, "Phase 5"),
+        FeatureToggle("screen", "投屏", state.featureFlags.screen, "Phase 6"),
+    )
 
     LazyColumn(
         modifier = Modifier
@@ -60,14 +59,24 @@ private fun MainScreen() {
     ) {
         item {
             StatusCard(
-                linuxName = "arch",
-                linuxIp = "auto-discovery",
-                status = "等待连接",
+                linuxName = state.deviceName,
+                linuxIp = state.deviceIp,
+                status = state.connectionStatus,
             )
         }
-        items(toggles.size) { index ->
-            val item = toggles[index]
-            FeatureCard(item)
+        items(toggles) { item ->
+            FeatureCard(item) { enabled ->
+                val current = state.featureFlags
+                MainService.updateFeatureFlags(
+                    when (item.key) {
+                        "notifications" -> current.copy(notifications = enabled)
+                        "clipboard" -> current.copy(clipboard = enabled)
+                        "sms" -> current.copy(sms = enabled)
+                        "file" -> current.copy(file = enabled)
+                        else -> current.copy(screen = enabled)
+                    }
+                )
+            }
         }
     }
 }
@@ -86,7 +95,7 @@ private fun StatusCard(linuxName: String, linuxIp: String, status: String) {
 }
 
 @Composable
-private fun FeatureCard(feature: FeatureToggle) {
+private fun FeatureCard(feature: FeatureToggle, onToggle: (Boolean) -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -94,11 +103,12 @@ private fun FeatureCard(feature: FeatureToggle) {
                 .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(feature.name, style = MaterialTheme.typography.titleMedium)
+                Text(feature.hint)
                 Text(if (feature.enabled) "已启用" else "未启用")
             }
-            Switch(checked = feature.enabled, onCheckedChange = {})
+            Switch(checked = feature.enabled, onCheckedChange = onToggle)
         }
     }
 }

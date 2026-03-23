@@ -60,8 +60,11 @@ class MessageDispatcher:
     async def handle_notify(self, message: Envelope) -> None:
         title = str(message.payload.get("title", "Phone"))
         body = str(message.payload.get("body", ""))
-        subprocess.run(["notify-send", title, body], check=False)
-        logging.info("notification mirrored")
+        result = subprocess.run(["notify-send", title, body], check=False)
+        if result.returncode == 0:
+            logging.info("notification mirrored title=%s", title)
+        else:
+            logging.warning("notify-send failed code=%s title=%s", result.returncode, title)
 
     async def handle_sms(self, message: Envelope) -> None:
         sender = str(message.payload.get("from", "SMS"))

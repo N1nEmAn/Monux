@@ -47,6 +47,7 @@ dependencies {
     implementation("androidx.compose.ui:ui:1.6.7")
     implementation("androidx.compose.ui:ui-tooling-preview:1.6.7")
     implementation("androidx.compose.foundation:foundation:1.6.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
     implementation("com.google.android.material:material:1.12.0")
     implementation("org.nanohttpd:nanohttpd-websocket:2.3.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

@@ -17,7 +17,12 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.minux.network.WebSocketServer
-import org.json.JSONObject
+import com.minux.protocol.Protocol
+import com.minux.ui.state.ConnectionState
+import com.minux.ui.state.FeatureFlags
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class MainService : Service() {
     private var webSocketServer: WebSocketServer? = null
@@ -27,13 +32,14 @@ class MainService : Service() {
     private val heartbeatHandler = Handler(Looper.getMainLooper())
     private val heartbeatRunnable = object : Runnable {
         override fun run() {
-            webSocketServer?.broadcast(JSONObject().put("type", "ping").put("payload", JSONObject()).toString())
+            webSocketServer?.broadcast(Protocol.ping().toString())
             heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS)
         }
     }
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         nsdManager = getSystemService(Context.NSD_SERVICE) as NsdManager
         createChannel()
@@ -51,6 +57,8 @@ class MainService : Service() {
         unregisterMdnsService()
         webSocketServer?.stopServer()
         webSocketServer = null
+        instance = null
+        state.value = state.value.copy(connectionStatus = "未连接", deviceIp = "auto-discovery")
         super.onDestroy()
         Log.i(TAG, "MainService destroyed")
     }
@@ -59,15 +67,33 @@ class MainService : Service() {
 
     private fun startWebSocketServer() {
         val deviceName = Build.MODEL ?: "Android"
-        val server = WebSocketServer(
-            port = SERVER_PORT,
-            deviceName = deviceName,
-            onClientConnected = { remote -> Log.i(TAG, "linux daemon connected remote=$remote") },
-            onClientDisconnected = { reason -> Log.i(TAG, "linux daemon disconnected reason=$reason") },
-            onMessageReceived = { message -> Log.i(TAG, "message=$message") },
-        )
-        server.startServer()
-        webSocketServer = server
+        runCatching {
+            val server = WebSocketServer(
+                port = SERVER_PORT,
+                deviceName = deviceName,
+                onClientConnected = { remote ->
+                    state.value = state.value.copy(connectionStatus = "已连接", deviceIp = remote)
+                    refreshNotification()
+                    Log.i(TAG, "linux daemon connected remote=$remote")
+                },
+                onClientDisconnected = { reason ->
+                    state.value = state.value.copy(connectionStatus = "等待重连")
+                    refreshNotification()
+                    Log.i(TAG, "linux daemon disconnected reason=$reason")
+                },
+                onMessageReceived = { message -> Log.i(TAG, "message=$message") },
+                onPeerHello = { peerName, _ ->
+                    state.value = state.value.copy(deviceName = peerName.ifBlank { "Linux" })
+                    refreshNotification()
+                },
+            )
+            server.startServer()
+            webSocketServer = server
+            state.value = state.value.copy(connectionStatus = "等待连接")
+        }.onFailure {
+            state.value = state.value.copy(connectionStatus = "服务启动失败")
+            Log.e(TAG, "websocket server failed", it)
+        }
     }
 
     private fun registerMdnsService() {
@@ -82,6 +108,7 @@ class MainService : Service() {
             }
 
             override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                state.value = state.value.copy(connectionStatus = "mDNS 注册失败")
                 Log.e(TAG, "mDNS registration failed code=$errorCode")
             }
 
@@ -114,29 +141,35 @@ class MainService : Service() {
     }
 
     private fun foregroundNotification(): Notification {
+        val connectedName = state.value.deviceName
+        val text = if (state.value.connectionStatus == "已连接") {
+            "已连接 $connectedName"
+        } else {
+            state.value.connectionStatus
+        }
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Minux connected")
+            .setContentTitle("Minux · $text")
             .setContentText("Phone bridge is ready")
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setOngoing(true)
             .build()
     }
 
+    private fun refreshNotification() {
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, foregroundNotification())
+    }
+
     fun mirrorNotification(appName: String, title: String, body: String) {
-        val payload = JSONObject()
-            .put("type", "notify")
-            .put("app", appName)
-            .put("title", title)
-            .put("body", body)
-        webSocketServer?.broadcast(payload.toString())
+        if (!state.value.featureFlags.notifications) {
+            return
+        }
+        webSocketServer?.broadcast(Protocol.notify(appName, title, body).toString())
     }
 
     fun syncClipboard(text: String) {
         clipboardManager?.setPrimaryClip(ClipData.newPlainText("minux", text))
-        val payload = JSONObject()
-            .put("type", "clipboard")
-            .put("text", text)
-        webSocketServer?.broadcast(payload.toString())
+        webSocketServer?.broadcast(Protocol.clipboard(text).toString())
     }
 
     companion object {
@@ -146,5 +179,27 @@ class MainService : Service() {
         private const val SERVER_PORT = 39281
         private const val SERVICE_TYPE = "_minux._tcp."
         private const val HEARTBEAT_INTERVAL_MS = 15_000L
+
+        private var instance: MainService? = null
+        private val state = MutableStateFlow(ConnectionState(featureFlags = FeatureFlags()))
+
+        fun stateFlow(): StateFlow<ConnectionState> = state.asStateFlow()
+
+        fun updateFeatureFlags(flags: FeatureFlags) {
+            state.value = state.value.copy(featureFlags = flags)
+        }
+
+        fun updateNotificationAccess(granted: Boolean) {
+            state.value = state.value.copy(notificationAccessGranted = granted)
+            instance?.refreshNotification()
+        }
+
+        fun forwardNotification(payload: String) {
+            val service = instance ?: return
+            if (!state.value.featureFlags.notifications) {
+                return
+            }
+            service.webSocketServer?.broadcast(payload)
+        }
     }
 }
