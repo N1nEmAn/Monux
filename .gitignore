@@ -1,3 +1,15 @@
+# Gradle
+android-app/.gradle/
+android-app/app/build/
+android-app/build/
+*.class
+
+# Python
 __pycache__/
 *.pyc
-.pytest_cache/
+*.pyo
+
+# IDE
+.idea/
+*.iml
+.DS_Store
