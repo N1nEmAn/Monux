@@ -49,8 +49,13 @@ object Protocol {
         )
     }
 
-    fun clipboard(text: String): JSONObject {
-        return envelope(TYPE_CLIPBOARD, JSONObject().put("text", text))
+    fun clipboard(text: String, contentHash: String): JSONObject {
+        return envelope(
+            TYPE_CLIPBOARD,
+            JSONObject()
+                .put("text", text)
+                .put("content_hash", contentHash)
+        )
     }
 
     private fun envelope(type: String, payload: JSONObject): JSONObject {

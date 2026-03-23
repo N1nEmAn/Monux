@@ -10,8 +10,10 @@ from typing import Awaitable, Callable
 import websockets
 from websockets.client import WebSocketClientProtocol
 
+from handlers.clipboard import ClipboardPayload, write_clipboard
 from mdns_discover import discover_device
 from protocol import Envelope, hello, hello_ack, ping, pong
+from watchers.clipboard_watch import ClipboardWatcher
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -21,6 +23,7 @@ class MinuxConfig:
     reconnect_delay: float = float(os.getenv("MINUX_RECONNECT_DELAY", "5"))
     heartbeat_interval: float = float(os.getenv("MINUX_HEARTBEAT_INTERVAL", "15"))
     discovery_timeout: float = float(os.getenv("MINUX_DISCOVERY_TIMEOUT", "5"))
+    clipboard_poll_interval: float = float(os.getenv("MINUX_CLIPBOARD_POLL_INTERVAL", "1"))
     device_url: str = os.getenv("MINUX_DEVICE_URL", "")
 
 
@@ -37,9 +40,11 @@ class MessageDispatcher:
             "pong": self.handle_pong,
         }
         self._ws: WebSocketClientProtocol | None = None
+        self._clipboard_watcher: ClipboardWatcher | None = None
 
-    def bind(self, ws: WebSocketClientProtocol) -> None:
+    def bind(self, ws: WebSocketClientProtocol, clipboard_watcher: ClipboardWatcher) -> None:
         self._ws = ws
+        self._clipboard_watcher = clipboard_watcher
 
     async def dispatch(self, message: Envelope) -> None:
         handler = self._handlers.get(message.type)
@@ -52,10 +57,14 @@ class MessageDispatcher:
 
     async def handle_clipboard(self, message: Envelope) -> None:
         text = str(message.payload.get("text", ""))
-        if not text:
+        content_hash = str(message.payload.get("content_hash", ""))
+        if not text or not content_hash:
             return
-        subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode(), check=False)
-        logging.info("clipboard synced")
+        applied_hash = await asyncio.to_thread(write_clipboard, text)
+        if applied_hash:
+            if self._clipboard_watcher is not None:
+                self._clipboard_watcher.remember_hash(applied_hash)
+            logging.info("clipboard synced hash=%s", applied_hash[:12])
 
     async def handle_notify(self, message: Envelope) -> None:
         title = str(message.payload.get("title", "Phone"))
@@ -120,15 +129,18 @@ class MinuxDaemon:
         device_url = await self._resolve_device_url()
         logging.info("connecting to %s", device_url)
         async with websockets.connect(device_url, ping_interval=None, ping_timeout=None) as ws:
-            self.dispatcher.bind(ws)
+            clipboard_watcher = ClipboardWatcher(self._push_clipboard_update, self.config.clipboard_poll_interval)
+            self.dispatcher.bind(ws, clipboard_watcher)
             heartbeat_task = asyncio.create_task(self._heartbeat_loop(ws))
+            clipboard_task = asyncio.create_task(clipboard_watcher.run())
             try:
                 await self._on_connect(ws)
                 async for raw in ws:
                     await self._handle_message(raw)
             finally:
                 heartbeat_task.cancel()
-                await asyncio.gather(heartbeat_task, return_exceptions=True)
+                clipboard_task.cancel()
+                await asyncio.gather(heartbeat_task, clipboard_task, return_exceptions=True)
 
     async def _resolve_device_url(self) -> str:
         if self.config.device_url:
@@ -148,6 +160,16 @@ class MinuxDaemon:
             await asyncio.sleep(self.config.heartbeat_interval)
             await ws.send(ping().to_json())
             logging.debug("ping sent")
+
+    async def _push_clipboard_update(self, payload: ClipboardPayload) -> None:
+        if self.dispatcher._ws is None:
+            return
+        envelope = Envelope(
+            type="clipboard",
+            payload={"text": payload.text, "content_hash": payload.content_hash},
+        )
+        await self.dispatcher._ws.send(envelope.to_json())
+        logging.info("clipboard pushed hash=%s", payload.content_hash[:12])
 
     async def _handle_message(self, raw: str) -> None:
         try:

@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -16,6 +15,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.minux.clipboard.ClipboardMonitor
+import com.minux.clipboard.ClipboardSyncManager
 import com.minux.network.WebSocketServer
 import com.minux.protocol.Protocol
 import com.minux.ui.state.ConnectionState
@@ -23,10 +24,13 @@ import com.minux.ui.state.FeatureFlags
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.json.JSONObject
 
 class MainService : Service() {
     private var webSocketServer: WebSocketServer? = null
     private var clipboardManager: ClipboardManager? = null
+    private var clipboardMonitor: ClipboardMonitor? = null
+    private var clipboardSyncManager: ClipboardSyncManager? = null
     private var nsdManager: NsdManager? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
     private val heartbeatHandler = Handler(Looper.getMainLooper())
@@ -41,6 +45,16 @@ class MainService : Service() {
         super.onCreate()
         instance = this
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboardSyncManager = ClipboardSyncManager(
+            clipboardManager = clipboardManager!!,
+            sendMessage = { payload -> webSocketServer?.broadcast(payload) },
+        )
+        clipboardMonitor = ClipboardMonitor(clipboardManager!!) { text ->
+            if (state.value.featureFlags.clipboard) {
+                clipboardSyncManager?.syncToLinux(text)
+            }
+        }
+        clipboardMonitor?.start()
         nsdManager = getSystemService(Context.NSD_SERVICE) as NsdManager
         createChannel()
         startForeground(NOTIFICATION_ID, foregroundNotification())
@@ -54,6 +68,7 @@ class MainService : Service() {
 
     override fun onDestroy() {
         heartbeatHandler.removeCallbacks(heartbeatRunnable)
+        clipboardMonitor?.stop()
         unregisterMdnsService()
         webSocketServer?.stopServer()
         webSocketServer = null
@@ -81,7 +96,7 @@ class MainService : Service() {
                     refreshNotification()
                     Log.i(TAG, "linux daemon disconnected reason=$reason")
                 },
-                onMessageReceived = { message -> Log.i(TAG, "message=$message") },
+                onMessageReceived = { message -> handleIncomingMessage(message) },
                 onPeerHello = { peerName, _ ->
                     state.value = state.value.copy(deviceName = peerName.ifBlank { "Linux" })
                     refreshNotification()
@@ -93,6 +108,20 @@ class MainService : Service() {
         }.onFailure {
             state.value = state.value.copy(connectionStatus = "服务启动失败")
             Log.e(TAG, "websocket server failed", it)
+        }
+    }
+
+    private fun handleIncomingMessage(message: JSONObject) {
+        Log.i(TAG, "message=$message")
+        when (message.optString("type")) {
+            Protocol.TYPE_CLIPBOARD -> {
+                val payload = message.optJSONObject("payload") ?: return
+                val text = payload.optString("text")
+                val hash = payload.optString("content_hash")
+                if (text.isNotBlank() && hash.isNotBlank()) {
+                    clipboardSyncManager?.applyFromLinux(text, hash)
+                }
+            }
         }
     }
 
@@ -165,11 +194,6 @@ class MainService : Service() {
             return
         }
         webSocketServer?.broadcast(Protocol.notify(appName, title, body).toString())
-    }
-
-    fun syncClipboard(text: String) {
-        clipboardManager?.setPrimaryClip(ClipData.newPlainText("minux", text))
-        webSocketServer?.broadcast(Protocol.clipboard(text).toString())
     }
 
     companion object {
