@@ -30,4 +30,4 @@ def write_chunk(transfer: IncomingFileTransfer, data_base64: str) -> None:
 
 
 def notify_file_received(path: Path) -> None:
-    subprocess.run(["notify-send", "Minux 文件已接收", str(path)], check=False)
+    subprocess.run(["notify-send", "Monux 文件已接收", str(path)], check=False)

@@ -9,10 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 LINUX_DAEMON = ROOT / "linux-daemon"
 sys.path.insert(0, str(LINUX_DAEMON))
 
-main_spec = importlib.util.spec_from_file_location("minux_main", LINUX_DAEMON / "main.py")
+main_spec = importlib.util.spec_from_file_location("monux_main", LINUX_DAEMON / "main.py")
 main = importlib.util.module_from_spec(main_spec)
 assert main_spec and main_spec.loader
-sys.modules["minux_main"] = main  # required for @dataclass(slots=True) on Python 3.14
+sys.modules["monux_main"] = main  # required for @dataclass(slots=True) on Python 3.14
 main_spec.loader.exec_module(main)
 
 from handlers.file import IncomingFileTransfer, ensure_target_dir, write_chunk

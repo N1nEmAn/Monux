@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.minux">
+    package="com.monux">
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
-    <application android:label="Minux">
+    <application android:label="Monux">
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -40,10 +40,10 @@
             android:foregroundServiceType="dataSync" />
 
         <service
-            android:name=".notify.MinuxNotificationListener"
+            android:name=".notify.MonuxNotificationListener"
             android:enabled="true"
             android:exported="false"
-            android:label="Minux Notification Mirror"
+            android:label="Monux Notification Mirror"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
@@ -63,7 +63,7 @@
             android:name=".screen.ScreenTileService"
             android:exported="true"
             android:icon="@android:drawable/stat_sys_data_bluetooth"
-            android:label="Minux 投屏"
+            android:label="Monux 投屏"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />

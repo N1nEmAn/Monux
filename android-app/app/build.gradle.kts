@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.minux"
+    namespace = "com.monux"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.minux"
+        applicationId = "com.monux"
         minSdk = 29
         targetSdk = 34
         versionCode = 1

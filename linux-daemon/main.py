@@ -18,7 +18,7 @@ from mdns_discover import discover_device
 from protocol import Envelope, hello, hello_ack, ping, pong
 from watchers.clipboard_watch import ClipboardWatcher
 
-DEFAULT_SAVE_DIR = os.getenv("MINUX_SAVE_DIR", "~/Downloads/Minux")
+DEFAULT_SAVE_DIR = os.getenv("MINUX_SAVE_DIR", "~/Downloads/Monux")
 FILE_TRANSFERS: dict[str, IncomingFileTransfer] = {}
 TARGET_DIR = ensure_target_dir(DEFAULT_SAVE_DIR)
 SCRCPY = ScrcpyController()
@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 
 @dataclass(slots=True)
-class MinuxConfig:
+class MonuxConfig:
     reconnect_delay: float = float(os.getenv("MINUX_RECONNECT_DELAY", "5"))
     heartbeat_interval: float = float(os.getenv("MINUX_HEARTBEAT_INTERVAL", "15"))
     discovery_timeout: float = float(os.getenv("MINUX_DISCOVERY_TIMEOUT", "5"))
@@ -188,8 +188,8 @@ class MessageDispatcher:
         logging.debug("pong received")
 
 
-class MinuxDaemon:
-    def __init__(self, config: MinuxConfig) -> None:
+class MonuxDaemon:
+    def __init__(self, config: MonuxConfig) -> None:
         self.config = config
         self.dispatcher = MessageDispatcher()
 
@@ -223,7 +223,7 @@ class MinuxDaemon:
             return self.config.device_url
         device = await asyncio.to_thread(discover_device, self.config.discovery_timeout)
         if device is None:
-            raise RuntimeError("no Minux Android device discovered via mDNS")
+            raise RuntimeError("no Monux Android device discovered via mDNS")
         logging.info("discovered android device name=%s host=%s port=%s", device.name, device.host, device.port)
         return device.ws_url
 
@@ -257,8 +257,8 @@ class MinuxDaemon:
 
 
 def main() -> None:
-    config = MinuxConfig()
-    daemon = MinuxDaemon(config)
+    config = MonuxConfig()
+    daemon = MonuxDaemon(config)
     asyncio.run(daemon.run())
 
 

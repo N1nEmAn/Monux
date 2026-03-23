@@ -7,7 +7,7 @@ from typing import Optional
 
 from zeroconf import ServiceBrowser, ServiceInfo, ServiceListener, Zeroconf
 
-SERVICE_TYPE = "_minux._tcp.local."
+SERVICE_TYPE = "_monux._tcp.local."
 
 
 @dataclass(slots=True)

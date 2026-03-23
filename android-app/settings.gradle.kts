@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Minux"
+rootProject.name = "Monux"
 include(":app")

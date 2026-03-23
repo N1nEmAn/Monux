@@ -9,10 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 LINUX_DAEMON = ROOT / "linux-daemon"
 sys.path.insert(0, str(LINUX_DAEMON))
 
-screen_spec = importlib.util.spec_from_file_location("minux_screen", LINUX_DAEMON / "handlers" / "screen.py")
+screen_spec = importlib.util.spec_from_file_location("monux_screen", LINUX_DAEMON / "handlers" / "screen.py")
 screen = importlib.util.module_from_spec(screen_spec)
 assert screen_spec and screen_spec.loader
-sys.modules["minux_screen"] = screen
+sys.modules["monux_screen"] = screen
 screen_spec.loader.exec_module(screen)
 
 
@@ -76,7 +76,7 @@ def test_scrcpy_start_returns_already_running(monkeypatch) -> None:
 
 
 def test_screen_tile_source_contains_qs_tile_toggle() -> None:
-    tile_path = ROOT / "android-app" / "app" / "src" / "main" / "kotlin" / "com" / "minux" / "screen" / "ScreenTileService.kt"
+    tile_path = ROOT / "android-app" / "app" / "src" / "main" / "kotlin" / "com" / "monux" / "screen" / "ScreenTileService.kt"
     content = tile_path.read_text(encoding="utf-8")
     assert "TileService" in content
     assert "MainService.toggleScreenMirror()" in content
