@@ -12,6 +12,7 @@ from websockets.client import WebSocketClientProtocol
 
 from handlers.clipboard import ClipboardPayload, write_clipboard
 from handlers.file import IncomingFileTransfer, ensure_target_dir, notify_file_received, write_chunk
+from handlers.screen import ScreenConfig, ScrcpyController
 from handlers.sms import mirror_sms, prompt_sms_reply
 from mdns_discover import discover_device
 from protocol import Envelope, hello, hello_ack, ping, pong
@@ -20,6 +21,7 @@ from watchers.clipboard_watch import ClipboardWatcher
 DEFAULT_SAVE_DIR = os.getenv("MINUX_SAVE_DIR", "~/Downloads/Minux")
 FILE_TRANSFERS: dict[str, IncomingFileTransfer] = {}
 TARGET_DIR = ensure_target_dir(DEFAULT_SAVE_DIR)
+SCRCPY = ScrcpyController()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -44,6 +46,8 @@ class MessageDispatcher:
             "file.chunk": self.handle_file_chunk,
             "file.complete": self.handle_file_complete,
             "file.error": self.handle_file_error,
+            "screen.start": self.handle_screen_start,
+            "screen.stop": self.handle_screen_stop,
             "file": self.handle_file,
             "hello": self.handle_hello,
             "hello_ack": self.handle_hello_ack,
@@ -142,6 +146,20 @@ class MessageDispatcher:
         transfer_id = str(message.payload.get("transfer_id", ""))
         FILE_TRANSFERS.pop(transfer_id, None)
         logging.warning("file transfer error transfer_id=%s", transfer_id)
+
+    async def handle_screen_start(self, message: Envelope) -> None:
+        max_size = int(message.payload.get("max_size", 1600) or 1600)
+        bitrate = str(message.payload.get("bitrate", "8M") or "8M")
+        success, detail = await asyncio.to_thread(SCRCPY.start, ScreenConfig(max_size=max_size, bitrate=bitrate))
+        logging.info("screen start success=%s detail=%s", success, detail)
+        if self._ws is not None:
+            await self._ws.send(Envelope(type="screen.started", payload={"success": success, "message": detail}).to_json())
+
+    async def handle_screen_stop(self, message: Envelope) -> None:
+        success, detail = await asyncio.to_thread(SCRCPY.stop)
+        logging.info("screen stop success=%s detail=%s", success, detail)
+        if self._ws is not None:
+            await self._ws.send(Envelope(type="screen.started", payload={"success": False, "message": detail}).to_json())
 
     async def handle_hello(self, message: Envelope) -> None:
         logging.info(

@@ -21,10 +21,12 @@ import android.net.Uri
 import com.minux.file.FileTransferManager
 import com.minux.network.WebSocketServer
 import com.minux.protocol.Protocol
+import com.minux.screen.ScreenSessionManager
 import com.minux.sms.SmsReplyExecutor
 import com.minux.ui.state.ConnectionState
 import com.minux.ui.state.FeatureFlags
 import com.minux.ui.state.FileTransferState
+import com.minux.ui.state.ScreenState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +38,7 @@ class MainService : Service() {
     private var clipboardMonitor: ClipboardMonitor? = null
     private var clipboardSyncManager: ClipboardSyncManager? = null
     private var fileTransferManager: FileTransferManager? = null
+    private var screenSessionManager: ScreenSessionManager? = null
     private var nsdManager: NsdManager? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
     private val heartbeatHandler = Handler(Looper.getMainLooper())
@@ -60,6 +63,9 @@ class MainService : Service() {
             onProgress = { fileName, progress ->
                 state.value = state.value.copy(fileTransfer = FileTransferState(fileName = fileName, progress = progress, active = progress < 1f))
             },
+        )
+        screenSessionManager = ScreenSessionManager(
+            sendMessage = { payload -> webSocketServer?.broadcast(payload) },
         )
         clipboardMonitor = ClipboardMonitor(clipboardManager!!) { text ->
             if (state.value.featureFlags.clipboard) {
@@ -161,6 +167,12 @@ class MainService : Service() {
             }
             Protocol.TYPE_FILE_ERROR -> {
                 state.value = state.value.copy(fileTransfer = FileTransferState())
+            }
+            Protocol.TYPE_SCREEN_STARTED -> {
+                val payload = message.optJSONObject("payload") ?: return
+                val success = payload.optBoolean("success", false)
+                val current = state.value.screen
+                state.value = state.value.copy(screen = current.copy(enabled = success))
             }
         }
     }
@@ -275,6 +287,23 @@ class MainService : Service() {
                 return
             }
             service.webSocketServer?.broadcast(Protocol.sms(sender, body).toString())
+        }
+
+        fun toggleScreenMirror() {
+            val service = instance ?: return
+            val current = state.value.screen
+            if (current.enabled) {
+                service.screenSessionManager?.stop()
+                state.value = state.value.copy(screen = current.copy(enabled = false))
+            } else {
+                service.screenSessionManager?.start(current.maxSize, current.bitrate)
+            }
+        }
+
+        fun screenEnabled(): Boolean = state.value.screen.enabled
+
+        fun updateScreenConfig(maxSize: Int, bitrate: String) {
+            state.value = state.value.copy(screen = state.value.screen.copy(maxSize = maxSize, bitrate = bitrate))
         }
     }
 }

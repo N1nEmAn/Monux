@@ -14,6 +14,12 @@ data class FileTransferState(
     val active: Boolean = false,
 )
 
+data class ScreenState(
+    val enabled: Boolean = false,
+    val maxSize: Int = 1600,
+    val bitrate: String = "8M",
+)
+
 data class ConnectionState(
     val deviceName: String = "未发现",
     val deviceIp: String = "auto-discovery",
@@ -21,6 +27,7 @@ data class ConnectionState(
     val notificationAccessGranted: Boolean = false,
     val featureFlags: FeatureFlags = FeatureFlags(),
     val fileTransfer: FileTransferState = FileTransferState(),
+    val screen: ScreenState = ScreenState(),
 )
 
 fun FeatureFlags.copy(

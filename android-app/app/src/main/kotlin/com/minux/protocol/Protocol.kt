@@ -18,6 +18,9 @@ object Protocol {
     const val TYPE_FILE_COMPLETE = "file.complete"
     const val TYPE_FILE_RECEIVED = "file.received"
     const val TYPE_FILE_ERROR = "file.error"
+    const val TYPE_SCREEN_START = "screen.start"
+    const val TYPE_SCREEN_STOP = "screen.stop"
+    const val TYPE_SCREEN_STARTED = "screen.started"
 
     fun hello(deviceName: String, platform: String): JSONObject {
         return envelope(
@@ -113,6 +116,19 @@ object Protocol {
                 .put("transfer_id", transferId)
                 .put("name", name)
         )
+    }
+
+    fun screenStart(maxSize: Int, bitrate: String): JSONObject {
+        return envelope(
+            TYPE_SCREEN_START,
+            JSONObject()
+                .put("max_size", maxSize)
+                .put("bitrate", bitrate)
+        )
+    }
+
+    fun screenStop(): JSONObject {
+        return envelope(TYPE_SCREEN_STOP, JSONObject())
     }
 
     private fun envelope(type: String, payload: JSONObject): JSONObject {
