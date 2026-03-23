@@ -20,6 +20,11 @@ data class ScreenState(
     val bitrate: String = "8M",
 )
 
+data class UiPreferences(
+    val useDynamicColor: Boolean = true,
+    val customSeedColor: Long = 0xFFFF7A1A,
+)
+
 data class ConnectionState(
     val deviceName: String = "未发现",
     val deviceIp: String = "auto-discovery",
@@ -28,12 +33,6 @@ data class ConnectionState(
     val featureFlags: FeatureFlags = FeatureFlags(),
     val fileTransfer: FileTransferState = FileTransferState(),
     val screen: ScreenState = ScreenState(),
+    val uiPreferences: UiPreferences = UiPreferences(),
 )
 
-fun FeatureFlags.copy(
-    notifications: Boolean = this.notifications,
-    clipboard: Boolean = this.clipboard,
-    sms: Boolean = this.sms,
-    file: Boolean = this.file,
-    screen: Boolean = this.screen,
-): FeatureFlags = FeatureFlags(notifications, clipboard, sms, file, screen)

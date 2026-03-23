@@ -27,6 +27,7 @@ import com.monux.ui.state.ConnectionState
 import com.monux.ui.state.FeatureFlags
 import com.monux.ui.state.FileTransferState
 import com.monux.ui.state.ScreenState
+import com.monux.ui.state.UiPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -222,16 +223,16 @@ class MainService : Service() {
     }
 
     private fun foregroundNotification(): Notification {
-        val connectedName = state.value.deviceName
+        val arch = Build.SUPPORTED_ABIS.firstOrNull()?.substringBefore('-') ?: "arch"
         val text = if (state.value.connectionStatus == "已连接") {
-            "已连接 $connectedName"
+            "Monux · $arch · 已连接"
         } else {
-            state.value.connectionStatus
+            "Monux · $arch · ${state.value.connectionStatus}"
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Monux · $text")
-            .setContentText("Phone bridge is ready")
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
+            .setContentTitle(text)
+            .setContentText(state.value.deviceName)
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .build()
     }
@@ -304,6 +305,10 @@ class MainService : Service() {
 
         fun updateScreenConfig(maxSize: Int, bitrate: String) {
             state.value = state.value.copy(screen = state.value.screen.copy(maxSize = maxSize, bitrate = bitrate))
+        }
+
+        fun updateUiPreferences(preferences: UiPreferences) {
+            state.value = state.value.copy(uiPreferences = preferences)
         }
     }
 }
