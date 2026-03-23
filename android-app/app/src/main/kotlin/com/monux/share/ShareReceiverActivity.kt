@@ -1,11 +1,11 @@
-package com.minux.share
+package com.monux.share
 
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
-import com.minux.MainService
+import com.monux.MainService
 
 class ShareReceiverActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

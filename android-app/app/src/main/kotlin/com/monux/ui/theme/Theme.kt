@@ -1,4 +1,4 @@
-package com.minux.ui.theme
+package com.monux.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -20,7 +20,7 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun MinuxTheme(content: @Composable () -> Unit) {
+fun MonuxTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors,
         content = content,

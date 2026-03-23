@@ -1,4 +1,4 @@
-package com.minux.notify
+package com.monux.notify
 
 import android.service.notification.StatusBarNotification
 import org.json.JSONObject

@@ -1,8 +1,8 @@
-package com.minux.clipboard
+package com.monux.clipboard
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import com.minux.protocol.Protocol
+import com.monux.protocol.Protocol
 import java.security.MessageDigest
 
 class ClipboardSyncManager(
@@ -25,7 +25,7 @@ class ClipboardSyncManager(
             return
         }
         lastContentHash = hash
-        clipboardManager.setPrimaryClip(ClipData.newPlainText("minux", text))
+        clipboardManager.setPrimaryClip(ClipData.newPlainText("monux", text))
     }
 
     fun currentHash(): String = lastContentHash

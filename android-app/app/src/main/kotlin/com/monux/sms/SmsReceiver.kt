@@ -1,11 +1,11 @@
-package com.minux.sms
+package com.monux.sms
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import android.util.Log
-import com.minux.MainService
+import com.monux.MainService
 
 class SmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -19,6 +19,6 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        private const val TAG = "MinuxSmsReceiver"
+        private const val TAG = "MonuxSmsReceiver"
     }
 }

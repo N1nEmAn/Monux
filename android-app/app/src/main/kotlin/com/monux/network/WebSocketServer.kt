@@ -1,7 +1,7 @@
-package com.minux.network
+package com.monux.network
 
 import android.util.Log
-import com.minux.protocol.Protocol
+import com.monux.protocol.Protocol
 import fi.iki.elonen.NanoWSD
 import org.json.JSONObject
 import java.io.IOException
@@ -86,7 +86,7 @@ class WebSocketServer(
     }
 
     companion object {
-        private const val TAG = "MinuxWebSocketServer"
+        private const val TAG = "MonuxWebSocketServer"
         private const val PLATFORM_ANDROID = "android"
     }
 }

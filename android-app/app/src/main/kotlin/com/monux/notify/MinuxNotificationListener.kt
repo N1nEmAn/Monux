@@ -1,11 +1,11 @@
-package com.minux.notify
+package com.monux.notify
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import com.minux.MainService
+import com.monux.MainService
 
-class MinuxNotificationListener : NotificationListenerService() {
+class MonuxNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         Log.i(TAG, "notification listener connected")
         MainService.updateNotificationAccess(true)
@@ -22,6 +22,6 @@ class MinuxNotificationListener : NotificationListenerService() {
     }
 
     companion object {
-        private const val TAG = "MinuxNotification"
+        private const val TAG = "MonuxNotification"
     }
 }

@@ -1,4 +1,4 @@
-package com.minux.sms
+package com.monux.sms
 
 import android.telephony.SmsManager
 

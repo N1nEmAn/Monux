@@ -1,4 +1,4 @@
-package com.minux.clipboard
+package com.monux.clipboard
 
 import android.content.ClipboardManager
 
