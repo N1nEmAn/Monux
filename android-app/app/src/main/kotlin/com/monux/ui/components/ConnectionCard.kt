@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,10 +21,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -62,61 +64,56 @@ fun ConnectionCard(
         ),
         label = "shimmerShift",
     )
-
-    val containerBrush = if (connected) {
-        Brush.linearGradient(listOf(Color(0xFF0E8F63), Color(0xFF47C98E), Color(0xFF79E5B1)))
-    } else {
-        Brush.linearGradient(
-            colors = listOf(
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.surface,
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
-            ),
-            start = androidx.compose.ui.geometry.Offset.Zero,
-            end = androidx.compose.ui.geometry.Offset(900f * shimmer.value, 500f),
+    val connectedBrush = Brush.linearGradient(
+        listOf(
+            Color(0xFF0E8F63),
+            Color(0xFF3DBB82),
+            Color(0xFF79E5B1),
         )
-    }
+    )
+    val disconnectedBrush = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
+        ),
+        start = androidx.compose.ui.geometry.Offset.Zero,
+        end = androidx.compose.ui.geometry.Offset(900f * shimmer.value, 500f),
+    )
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(34.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 14.dp),
     ) {
         Box(
             modifier = Modifier
-                .background(containerBrush)
+                .background(if (connected) connectedBrush else disconnectedBrush)
                 .padding(24.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = "设备连接状态",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (connected) Color.White.copy(alpha = 0.86f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = deviceName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = if (connected) Color.White else MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = deviceIp,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (connected) Color.White.copy(alpha = 0.82f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Badge(
-                        containerColor = if (connected) Color.White.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceBright,
-                        contentColor = if (connected) Color.White else MaterialTheme.colorScheme.onSurface,
-                    ) {
-                        Text(if (connected) "已连接" else "未连接")
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "设备连接状态",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (connected) Color.White.copy(alpha = 0.84f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = deviceName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (connected) Color.White else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = deviceIp,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (connected) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    StatusPill(
+                        label = if (connected) "已连接 · 低延迟稳定传输" else "发现中 · 等待握手",
+                        active = connected,
+                    )
                 }
 
                 Row(
@@ -127,7 +124,7 @@ fun ConnectionCard(
                         if (connected) {
                             Box(
                                 modifier = Modifier
-                                    .size((42.dp * pulse.value))
+                                    .size(42.dp * pulse.value)
                                     .clip(CircleShape)
                                     .background(Color.White.copy(alpha = 0.18f)),
                             )
@@ -139,7 +136,7 @@ fun ConnectionCard(
                                 .background(if (connected) Color.White else MaterialTheme.colorScheme.outline),
                         )
                     }
-                    Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = if (connected) "链路稳定，可直接同步通知 / 文件 / 剪贴板" else "正在搜索可用设备…",
                             style = MaterialTheme.typography.bodyLarge,
@@ -152,6 +149,28 @@ fun ConnectionCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun StatusPill(
+    label: String,
+    active: Boolean,
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = if (active) Color.White.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.74f),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (active) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+        ),
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
