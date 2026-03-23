@@ -1,5 +1,11 @@
 <div align="center">
 
+<img src="assets/banner.png" alt="Monux Banner" width="100%" />
+
+<img src="assets/app-icon.png" alt="Monux Icon" width="120" height="120" style="border-radius:24px;margin:16px 0" />
+
+<!-- fallback SVG -->
+<!--
 <svg width="600" height="120" viewBox="0 0 600 120" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -21,6 +27,7 @@
   <text x="550" y="45" font-family="monospace" font-size="11" fill="#4fc3f7">🖥</text>
   <text x="480" y="90" font-family="monospace" font-size="10" fill="#4fc3f7" opacity="0.7">WebSocket · mDNS</text>
 </svg>
+-->
 
 # Monux
 
