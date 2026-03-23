@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="assets/banner.png" alt="Monux Banner" width="100%" />
-
 <img src="assets/app-icon.png" alt="Monux Icon" width="120" height="120" style="border-radius:24px;margin:16px 0" />
 
 <!-- fallback SVG -->
@@ -58,39 +56,7 @@
 
 ## 🏗 架构 / Architecture
 
-```mermaid
-flowchart LR
-    subgraph Android ["📱 Android (Monux APP)"]
-        A1[Foreground Service]
-        A2[WebSocket Server :39281]
-        A3[NotificationListener]
-        A4[ClipboardMonitor]
-        A5[SmsReceiver]
-        A6[ShareReceiverActivity]
-        A7[ScreenTileService]
-    end
-
-    subgraph Linux ["🖥 Linux (monux daemon)"]
-        L1[WebSocket Client]
-        L2[notify-send]
-        L3[xclip / wl-copy]
-        L4[rofi SMS UI]
-        L5[File Save + notify]
-        L6[scrcpy]
-        L7[xdotool type]
-    end
-
-    A2 <-->|WebSocket + JSON| L1
-    A3 -->|notification| L2
-    A4 <-->|clipboard.update| L3
-    A5 -->|sms.mirror| L4
-    A6 -->|file.chunk| L5
-    A7 -->|screen.start| L6
-    L1 -->|input.text| L7
-
-    mDNS([mDNS Discovery]) -.->|自动发现手机 IP| L1
-    A1 -.->|广播服务| mDNS
-```
+<img src="assets/architecture.png" alt="Monux Architecture" width="100%" />
 
 ---
 
