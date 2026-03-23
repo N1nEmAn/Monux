@@ -8,39 +8,101 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.nsd.NsdManager
+import android.net.nsd.NsdServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import fi.iki.elonen.NanoWSD
+import com.minux.network.WebSocketServer
 import org.json.JSONObject
 
 class MainService : Service() {
-    private var webSocketServer: MinuxSocketServer? = null
+    private var webSocketServer: WebSocketServer? = null
     private var clipboardManager: ClipboardManager? = null
+    private var nsdManager: NsdManager? = null
+    private var registrationListener: NsdManager.RegistrationListener? = null
+    private val heartbeatHandler = Handler(Looper.getMainLooper())
+    private val heartbeatRunnable = object : Runnable {
+        override fun run() {
+            webSocketServer?.broadcast(JSONObject().put("type", "ping").put("payload", JSONObject()).toString())
+            heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        nsdManager = getSystemService(Context.NSD_SERVICE) as NsdManager
         createChannel()
         startForeground(NOTIFICATION_ID, foregroundNotification())
-        webSocketServer = MinuxSocketServer(8765)
-        webSocketServer?.start()
+        startWebSocketServer()
+        registerMdnsService()
+        heartbeatHandler.postDelayed(heartbeatRunnable, HEARTBEAT_INTERVAL_MS)
         Log.i(TAG, "MainService created")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
-    }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onDestroy() {
-        webSocketServer?.stop()
+        heartbeatHandler.removeCallbacks(heartbeatRunnable)
+        unregisterMdnsService()
+        webSocketServer?.stopServer()
         webSocketServer = null
         super.onDestroy()
         Log.i(TAG, "MainService destroyed")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun startWebSocketServer() {
+        val deviceName = Build.MODEL ?: "Android"
+        val server = WebSocketServer(
+            port = SERVER_PORT,
+            deviceName = deviceName,
+            onClientConnected = { remote -> Log.i(TAG, "linux daemon connected remote=$remote") },
+            onClientDisconnected = { reason -> Log.i(TAG, "linux daemon disconnected reason=$reason") },
+            onMessageReceived = { message -> Log.i(TAG, "message=$message") },
+        )
+        server.startServer()
+        webSocketServer = server
+    }
+
+    private fun registerMdnsService() {
+        val serviceInfo = NsdServiceInfo().apply {
+            serviceName = "Minux-${Build.MODEL ?: "Android"}"
+            serviceType = SERVICE_TYPE
+            port = SERVER_PORT
+        }
+        val listener = object : NsdManager.RegistrationListener {
+            override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {
+                Log.i(TAG, "mDNS registered name=${serviceInfo.serviceName} port=${serviceInfo.port}")
+            }
+
+            override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                Log.e(TAG, "mDNS registration failed code=$errorCode")
+            }
+
+            override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) {
+                Log.i(TAG, "mDNS unregistered name=${serviceInfo.serviceName}")
+            }
+
+            override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                Log.e(TAG, "mDNS unregistration failed code=$errorCode")
+            }
+        }
+        nsdManager?.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, listener)
+        registrationListener = listener
+    }
+
+    private fun unregisterMdnsService() {
+        val listener = registrationListener ?: return
+        runCatching { nsdManager?.unregisterService(listener) }
+            .onFailure { Log.w(TAG, "mDNS unregister failed", it) }
+        registrationListener = null
+    }
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
@@ -58,31 +120,6 @@ class MainService : Service() {
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setOngoing(true)
             .build()
-    }
-
-    private inner class MinuxSocketServer(port: Int) : NanoWSD(port) {
-        override fun openWebSocket(handshake: IHTTPSession?): WebSocket {
-            return object : WebSocket(handshake) {
-                override fun onOpen() {
-                    Log.i(TAG, "linux daemon connected")
-                }
-
-                override fun onClose(code: WebSocketFrame.CloseCode?, reason: String?, initiatedByRemote: Boolean) {
-                    Log.i(TAG, "linux daemon disconnected reason=$reason")
-                }
-
-                override fun onMessage(message: WebSocketFrame) {
-                    val payload = message.textPayload ?: return
-                    Log.i(TAG, "message=$payload")
-                }
-
-                override fun onPong(pong: WebSocketFrame?) = Unit
-
-                override fun onException(exception: java.lang.Exception?) {
-                    Log.e(TAG, "socket error", exception)
-                }
-            }
-        }
     }
 
     fun mirrorNotification(appName: String, title: String, body: String) {
@@ -106,5 +143,8 @@ class MainService : Service() {
         private const val TAG = "MinuxMainService"
         private const val CHANNEL_ID = "minux_bridge"
         private const val NOTIFICATION_ID = 1001
+        private const val SERVER_PORT = 39281
+        private const val SERVICE_TYPE = "_minux._tcp."
+        private const val HEARTBEAT_INTERVAL_MS = 15_000L
     }
 }
