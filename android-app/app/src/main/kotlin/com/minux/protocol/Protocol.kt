@@ -13,6 +13,11 @@ object Protocol {
     const val TYPE_SMS = "sms"
     const val TYPE_SMS_SEND = "sms.send"
     const val TYPE_SMS_SENT = "sms.sent"
+    const val TYPE_FILE_OFFER = "file.offer"
+    const val TYPE_FILE_CHUNK = "file.chunk"
+    const val TYPE_FILE_COMPLETE = "file.complete"
+    const val TYPE_FILE_RECEIVED = "file.received"
+    const val TYPE_FILE_ERROR = "file.error"
 
     fun hello(deviceName: String, platform: String): JSONObject {
         return envelope(
@@ -77,6 +82,36 @@ object Protocol {
                 .put("address", address)
                 .put("success", success)
                 .put("error", error)
+        )
+    }
+
+    fun fileOffer(transferId: String, name: String, size: Long): JSONObject {
+        return envelope(
+            TYPE_FILE_OFFER,
+            JSONObject()
+                .put("transfer_id", transferId)
+                .put("name", name)
+                .put("size", size)
+        )
+    }
+
+    fun fileChunk(transferId: String, index: Int, total: Int, dataBase64: String): JSONObject {
+        return envelope(
+            TYPE_FILE_CHUNK,
+            JSONObject()
+                .put("transfer_id", transferId)
+                .put("index", index)
+                .put("total", total)
+                .put("data_base64", dataBase64)
+        )
+    }
+
+    fun fileComplete(transferId: String, name: String): JSONObject {
+        return envelope(
+            TYPE_FILE_COMPLETE,
+            JSONObject()
+                .put("transfer_id", transferId)
+                .put("name", name)
         )
     }
 

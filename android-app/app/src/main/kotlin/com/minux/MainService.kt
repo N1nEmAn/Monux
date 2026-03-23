@@ -17,11 +17,14 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.minux.clipboard.ClipboardMonitor
 import com.minux.clipboard.ClipboardSyncManager
+import android.net.Uri
+import com.minux.file.FileTransferManager
 import com.minux.network.WebSocketServer
 import com.minux.protocol.Protocol
 import com.minux.sms.SmsReplyExecutor
 import com.minux.ui.state.ConnectionState
 import com.minux.ui.state.FeatureFlags
+import com.minux.ui.state.FileTransferState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +35,7 @@ class MainService : Service() {
     private var clipboardManager: ClipboardManager? = null
     private var clipboardMonitor: ClipboardMonitor? = null
     private var clipboardSyncManager: ClipboardSyncManager? = null
+    private var fileTransferManager: FileTransferManager? = null
     private var nsdManager: NsdManager? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
     private val heartbeatHandler = Handler(Looper.getMainLooper())
@@ -50,6 +54,13 @@ class MainService : Service() {
             clipboardManager = clipboardManager!!,
             sendMessage = { payload -> webSocketServer?.broadcast(payload) },
         )
+        fileTransferManager = FileTransferManager(
+            contentResolver = contentResolver,
+            sendMessage = { payload -> webSocketServer?.broadcast(payload) },
+            onProgress = { fileName, progress ->
+                state.value = state.value.copy(fileTransfer = FileTransferState(fileName = fileName, progress = progress, active = progress < 1f))
+            },
+        )
         clipboardMonitor = ClipboardMonitor(clipboardManager!!) { text ->
             if (state.value.featureFlags.clipboard) {
                 clipboardSyncManager?.syncToLinux(text)
@@ -65,7 +76,15 @@ class MainService : Service() {
         Log.i(TAG, "MainService created")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_SEND_FILE) {
+            val uri = intent.getParcelableExtra<Uri>(EXTRA_FILE_URI)
+            if (uri != null && state.value.featureFlags.file) {
+                fileTransferManager?.send(uri)
+            }
+        }
+        return START_STICKY
+    }
 
     override fun onDestroy() {
         heartbeatHandler.removeCallbacks(heartbeatRunnable)
@@ -136,6 +155,12 @@ class MainService : Service() {
                     onFailure = { Protocol.smsSent(address, false, it.message.orEmpty()) },
                 )
                 webSocketServer?.broadcast(ack.toString())
+            }
+            Protocol.TYPE_FILE_RECEIVED -> {
+                state.value = state.value.copy(fileTransfer = FileTransferState())
+            }
+            Protocol.TYPE_FILE_ERROR -> {
+                state.value = state.value.copy(fileTransfer = FileTransferState())
             }
         }
     }
@@ -212,6 +237,9 @@ class MainService : Service() {
     }
 
     companion object {
+        const val ACTION_SEND_FILE = "com.minux.action.SEND_FILE"
+        const val EXTRA_FILE_URI = "com.minux.extra.FILE_URI"
+
         private const val TAG = "MinuxMainService"
         private const val CHANNEL_ID = "minux_bridge"
         private const val NOTIFICATION_ID = 1001

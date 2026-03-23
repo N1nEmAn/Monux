@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -47,7 +48,7 @@ private fun MainScreen() {
         FeatureToggle("notifications", "通知镜像", state.featureFlags.notifications, if (state.notificationAccessGranted) "通知权限已就绪" else "需授予通知访问权限"),
         FeatureToggle("clipboard", "剪贴板", state.featureFlags.clipboard, "通信链路已接入"),
         FeatureToggle("sms", "短信", state.featureFlags.sms, "短信镜像/回复已接入"),
-        FeatureToggle("file", "文件快传", state.featureFlags.file, "Phase 5"),
+        FeatureToggle("file", "文件快传", state.featureFlags.file, "支持 Share Sheet 与进度显示"),
         FeatureToggle("screen", "投屏", state.featureFlags.screen, "Phase 6"),
     )
 
@@ -63,6 +64,11 @@ private fun MainScreen() {
                 linuxIp = state.deviceIp,
                 status = state.connectionStatus,
             )
+        }
+        if (state.fileTransfer.active) {
+            item {
+                TransferCard(state.fileTransfer.fileName, state.fileTransfer.progress)
+            }
         }
         items(toggles) { item ->
             FeatureCard(item) { enabled ->
@@ -109,6 +115,21 @@ private fun FeatureCard(feature: FeatureToggle, onToggle: (Boolean) -> Unit) {
                 Text(if (feature.enabled) "已启用" else "未启用")
             }
             Switch(checked = feature.enabled, onCheckedChange = onToggle)
+        }
+    }
+}
+
+@Composable
+private fun TransferCard(fileName: String, progress: Float) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("文件传输", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(fileName)
+            Spacer(modifier = Modifier.height(8.dp))
+            LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("${(progress * 100).toInt()}%")
         }
     }
 }

@@ -11,10 +11,15 @@ import websockets
 from websockets.client import WebSocketClientProtocol
 
 from handlers.clipboard import ClipboardPayload, write_clipboard
+from handlers.file import IncomingFileTransfer, ensure_target_dir, notify_file_received, write_chunk
 from handlers.sms import mirror_sms, prompt_sms_reply
 from mdns_discover import discover_device
 from protocol import Envelope, hello, hello_ack, ping, pong
 from watchers.clipboard_watch import ClipboardWatcher
+
+DEFAULT_SAVE_DIR = os.getenv("MINUX_SAVE_DIR", "~/Downloads/Minux")
+FILE_TRANSFERS: dict[str, IncomingFileTransfer] = {}
+TARGET_DIR = ensure_target_dir(DEFAULT_SAVE_DIR)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -35,6 +40,10 @@ class MessageDispatcher:
             "notify": self.handle_notify,
             "sms": self.handle_sms,
             "sms.sent": self.handle_sms_sent,
+            "file.offer": self.handle_file_offer,
+            "file.chunk": self.handle_file_chunk,
+            "file.complete": self.handle_file_complete,
+            "file.error": self.handle_file_error,
             "file": self.handle_file,
             "hello": self.handle_hello,
             "hello_ack": self.handle_hello_ack,
@@ -99,6 +108,40 @@ class MessageDispatcher:
     async def handle_file(self, message: Envelope) -> None:
         name = str(message.payload.get("name", "file"))
         logging.info("file event received name=%s", name)
+
+    async def handle_file_offer(self, message: Envelope) -> None:
+        transfer_id = str(message.payload.get("transfer_id", ""))
+        name = str(message.payload.get("name", "shared-file"))
+        if not transfer_id:
+            return
+        transfer = IncomingFileTransfer(transfer_id=transfer_id, name=name, target_dir=TARGET_DIR)
+        if transfer.path.exists():
+            transfer.path.unlink()
+        FILE_TRANSFERS[transfer_id] = transfer
+        logging.info("file offer accepted transfer_id=%s name=%s", transfer_id, name)
+
+    async def handle_file_chunk(self, message: Envelope) -> None:
+        transfer_id = str(message.payload.get("transfer_id", ""))
+        data_base64 = str(message.payload.get("data_base64", ""))
+        transfer = FILE_TRANSFERS.get(transfer_id)
+        if transfer is None or not data_base64:
+            return
+        await asyncio.to_thread(write_chunk, transfer, data_base64)
+
+    async def handle_file_complete(self, message: Envelope) -> None:
+        transfer_id = str(message.payload.get("transfer_id", ""))
+        transfer = FILE_TRANSFERS.pop(transfer_id, None)
+        if transfer is None:
+            return
+        notify_file_received(transfer.path)
+        logging.info("file received path=%s", transfer.path)
+        if self._ws is not None:
+            await self._ws.send(Envelope(type="file.received", payload={"transfer_id": transfer_id, "path": str(transfer.path)}).to_json())
+
+    async def handle_file_error(self, message: Envelope) -> None:
+        transfer_id = str(message.payload.get("transfer_id", ""))
+        FILE_TRANSFERS.pop(transfer_id, None)
+        logging.warning("file transfer error transfer_id=%s", transfer_id)
 
     async def handle_hello(self, message: Envelope) -> None:
         logging.info(
