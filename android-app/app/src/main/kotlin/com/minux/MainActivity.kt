@@ -46,7 +46,7 @@ private fun MainScreen() {
     val toggles = listOf(
         FeatureToggle("notifications", "通知镜像", state.featureFlags.notifications, if (state.notificationAccessGranted) "通知权限已就绪" else "需授予通知访问权限"),
         FeatureToggle("clipboard", "剪贴板", state.featureFlags.clipboard, "通信链路已接入"),
-        FeatureToggle("sms", "短信", state.featureFlags.sms, "Phase 4"),
+        FeatureToggle("sms", "短信", state.featureFlags.sms, "短信镜像/回复已接入"),
         FeatureToggle("file", "文件快传", state.featureFlags.file, "Phase 5"),
         FeatureToggle("screen", "投屏", state.featureFlags.screen, "Phase 6"),
     )

@@ -10,6 +10,9 @@ object Protocol {
     const val TYPE_PONG = "pong"
     const val TYPE_NOTIFY = "notify"
     const val TYPE_CLIPBOARD = "clipboard"
+    const val TYPE_SMS = "sms"
+    const val TYPE_SMS_SEND = "sms.send"
+    const val TYPE_SMS_SENT = "sms.sent"
 
     fun hello(deviceName: String, platform: String): JSONObject {
         return envelope(
@@ -55,6 +58,25 @@ object Protocol {
             JSONObject()
                 .put("text", text)
                 .put("content_hash", contentHash)
+        )
+    }
+
+    fun sms(sender: String, body: String): JSONObject {
+        return envelope(
+            TYPE_SMS,
+            JSONObject()
+                .put("from", sender)
+                .put("body", body)
+        )
+    }
+
+    fun smsSent(address: String, success: Boolean, error: String = ""): JSONObject {
+        return envelope(
+            TYPE_SMS_SENT,
+            JSONObject()
+                .put("address", address)
+                .put("success", success)
+                .put("error", error)
         )
     }
 

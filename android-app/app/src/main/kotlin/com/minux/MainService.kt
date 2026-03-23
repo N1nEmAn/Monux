@@ -19,6 +19,7 @@ import com.minux.clipboard.ClipboardMonitor
 import com.minux.clipboard.ClipboardSyncManager
 import com.minux.network.WebSocketServer
 import com.minux.protocol.Protocol
+import com.minux.sms.SmsReplyExecutor
 import com.minux.ui.state.ConnectionState
 import com.minux.ui.state.FeatureFlags
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -122,6 +123,20 @@ class MainService : Service() {
                     clipboardSyncManager?.applyFromLinux(text, hash)
                 }
             }
+            Protocol.TYPE_SMS_SEND -> {
+                val payload = message.optJSONObject("payload") ?: return
+                val address = payload.optString("address")
+                val body = payload.optString("body")
+                if (address.isBlank() || body.isBlank()) {
+                    return
+                }
+                val result = SmsReplyExecutor.send(address, body)
+                val ack = result.fold(
+                    onSuccess = { Protocol.smsSent(address, true) },
+                    onFailure = { Protocol.smsSent(address, false, it.message.orEmpty()) },
+                )
+                webSocketServer?.broadcast(ack.toString())
+            }
         }
     }
 
@@ -224,6 +239,14 @@ class MainService : Service() {
                 return
             }
             service.webSocketServer?.broadcast(payload)
+        }
+
+        fun forwardSms(sender: String, body: String) {
+            val service = instance ?: return
+            if (!state.value.featureFlags.sms) {
+                return
+            }
+            service.webSocketServer?.broadcast(Protocol.sms(sender, body).toString())
         }
     }
 }

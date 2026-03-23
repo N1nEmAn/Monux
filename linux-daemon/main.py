@@ -11,6 +11,7 @@ import websockets
 from websockets.client import WebSocketClientProtocol
 
 from handlers.clipboard import ClipboardPayload, write_clipboard
+from handlers.sms import mirror_sms, prompt_sms_reply
 from mdns_discover import discover_device
 from protocol import Envelope, hello, hello_ack, ping, pong
 from watchers.clipboard_watch import ClipboardWatcher
@@ -33,6 +34,7 @@ class MessageDispatcher:
             "clipboard": self.handle_clipboard,
             "notify": self.handle_notify,
             "sms": self.handle_sms,
+            "sms.sent": self.handle_sms_sent,
             "file": self.handle_file,
             "hello": self.handle_hello,
             "hello_ack": self.handle_hello_ack,
@@ -78,8 +80,21 @@ class MessageDispatcher:
     async def handle_sms(self, message: Envelope) -> None:
         sender = str(message.payload.get("from", "SMS"))
         body = str(message.payload.get("body", ""))
-        subprocess.run(["notify-send", f"SMS from {sender}", body], check=False)
-        logging.info("sms mirrored")
+        mirror_sms(sender, body)
+        logging.info("sms mirrored from=%s", sender)
+        reply = await asyncio.to_thread(prompt_sms_reply, sender, body)
+        if reply and self._ws is not None:
+            await self._ws.send(Envelope(type="sms.send", payload={"address": sender, "body": reply}).to_json())
+            logging.info("sms reply sent to android sender=%s", sender)
+
+    async def handle_sms_sent(self, message: Envelope) -> None:
+        address = str(message.payload.get("address", ""))
+        success = bool(message.payload.get("success", False))
+        error = str(message.payload.get("error", ""))
+        if success:
+            logging.info("sms delivered address=%s", address)
+        else:
+            logging.warning("sms delivery failed address=%s error=%s", address, error)
 
     async def handle_file(self, message: Envelope) -> None:
         name = str(message.payload.get("name", "file"))
