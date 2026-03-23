@@ -45,10 +45,10 @@ class WebSocketServer(
         return ClientSocket(handshake)
     }
 
-    private inner class ClientSocket(handshake: IHTTPSession?) : WebSocket(handshake) {
+    private inner class ClientSocket(private val session: IHTTPSession?) : WebSocket(session) {
         override fun onOpen() {
             sockets += this
-            onClientConnected(remoteIpAddress)
+            onClientConnected(session?.remoteIpAddress ?: "unknown")
             send(Protocol.hello(deviceName, PLATFORM_ANDROID).toString())
         }
 
@@ -80,7 +80,7 @@ class WebSocketServer(
             Log.d(TAG, "pong received")
         }
 
-        override fun onException(exception: Exception?) {
+        override fun onException(exception: IOException?) {
             Log.e(TAG, "socket error", exception)
         }
     }
