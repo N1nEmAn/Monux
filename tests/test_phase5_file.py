@@ -41,7 +41,15 @@ def test_write_chunk_appends_file_content(tmp_path: Path) -> None:
 
 def test_file_offer_chunk_complete_flow(monkeypatch, tmp_path: Path) -> None:
     dispatcher = main.MessageDispatcher()
-    dispatcher._ws = StubSocket()
+    socket = StubSocket()
+    send_contexts: list[str] = []
+
+    async def send_json(payload: str, context: str) -> bool:
+        send_contexts.append(context)
+        await socket.send(payload)
+        return True
+
+    dispatcher.bind(socket, object(), send_json)
     monkeypatch.setattr(main, "TARGET_DIR", tmp_path)
     monkeypatch.setattr(main, "FILE_TRANSFERS", {})
 
@@ -74,8 +82,9 @@ def test_file_offer_chunk_complete_flow(monkeypatch, tmp_path: Path) -> None:
     assert saved.read_text() == "hello world"
     assert notified == [saved]
     assert main.FILE_TRANSFERS == {}
-    assert dispatcher._ws.messages
-    assert 'file.received' in dispatcher._ws.messages[0]
+    assert send_contexts == ["file.received ack"]
+    assert socket.messages
+    assert 'file.received' in socket.messages[0]
 
 
 def test_file_error_removes_transfer(monkeypatch, tmp_path: Path) -> None:

@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Palette
@@ -39,11 +38,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.monux.ui.state.UiPreferences
+import com.monux.ui.theme.MonuxUi
 
 private val presetColors = listOf(
     0xFFFF7A1AL,
@@ -60,11 +59,12 @@ fun SettingsScreen(
     onPreferencesChange: (UiPreferences) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val spacing = MonuxUi.spacing
     var showColorPicker by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         item {
             SettingsSection(
@@ -117,14 +117,14 @@ fun SettingsScreen(
             ) {
                 PreferenceRow(
                     title = "设计语言",
-                    subtitle = "Material 3 / Reply 风格卡片 / 超椭圆图标",
+                    subtitle = "更克制的 Material 3 扁平与色阶层级",
                     trailing = { SettingValueChip("v0.1.3") },
                 )
                 PreferenceDivider()
                 PreferenceRow(
                     title = "体验目标",
-                    subtitle = "接近 iOS / HyperOS 顶级层级与动效",
-                    trailing = { SettingValueChip("旗舰级") },
+                    subtitle = "让连接、文件与设置像系统应用一样稳定清晰",
+                    trailing = { SettingValueChip("手机优先") },
                 )
             }
         }
@@ -148,8 +148,12 @@ private fun SettingsSection(
     subtitle: String,
     content: @Composable () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    val spacing = MonuxUi.spacing
+    val radii = MonuxUi.radii
+    val elevations = MonuxUi.elevations
+
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
@@ -162,21 +166,13 @@ private fun SettingsSection(
             )
         }
         Card(
-            shape = RoundedCornerShape(30.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.medium),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            elevation = CardDefaults.cardElevation(defaultElevation = elevations.low),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)),
         ) {
             Column(
-                modifier = Modifier
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                                MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.92f),
-                            )
-                        )
-                    )
-                    .padding(vertical = 6.dp),
+                modifier = Modifier.padding(vertical = spacing.xs),
             ) {
                 content()
             }
@@ -190,16 +186,18 @@ private fun PreferenceRow(
     subtitle: String,
     trailing: @Composable () -> Unit,
 ) {
+    val spacing = MonuxUi.spacing
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+            .padding(horizontal = spacing.xl, vertical = spacing.lg),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -210,21 +208,25 @@ private fun PreferenceRow(
 
 @Composable
 private fun PreferenceDivider() {
+    val spacing = MonuxUi.spacing
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = spacing.xl)
             .height(1.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
     )
 }
 
 @Composable
 private fun SettingValueChip(text: String) {
+    val radii = MonuxUi.radii
+
     Surface(
-        shape = RoundedCornerShape(999.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.pill),
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
     ) {
         Text(
             text = text,
@@ -242,9 +244,11 @@ private fun ColorPreferenceRow(
     onSelect: (Long) -> Unit,
     onCustom: () -> Unit,
 ) {
+    val spacing = MonuxUi.spacing
+
     Column(
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.padding(start = spacing.xl, end = spacing.xl, top = spacing.lg, bottom = spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
         Text("主题主色", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Text(
@@ -252,7 +256,7 @@ private fun ColorPreferenceRow(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
             items(presetColors) { color ->
                 val selectedColor = selected == color && !dynamicColorEnabled
                 PaletteCell(
@@ -274,15 +278,17 @@ private fun PaletteCell(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val radii = MonuxUi.radii
+
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.small),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         border = BorderStroke(
             if (selected) 2.dp else 1.dp,
             if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
         ),
-        shadowElevation = if (selected) 8.dp else 0.dp,
+        shadowElevation = if (selected) 4.dp else 0.dp,
     ) {
         Box(
             modifier = Modifier
@@ -314,9 +320,11 @@ private fun PaletteCell(
 private fun CustomPaletteCell(
     onClick: () -> Unit,
 ) {
+    val radii = MonuxUi.radii
+
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.small),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
@@ -348,6 +356,7 @@ private fun CustomColorDialog(
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit,
 ) {
+    val spacing = MonuxUi.spacing
     var selected by remember(initialColor) { mutableLongStateOf(initialColor) }
     val customChoices = listOf(0xFFEC5B5BL, 0xFF5C8DFFL, 0xFF15B392L, 0xFFAA6BFFL)
 
@@ -355,7 +364,7 @@ private fun CustomColorDialog(
         onDismissRequest = onDismiss,
         title = { Text("自定义颜色") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 customChoices.forEach { option ->
                     Row(
                         modifier = Modifier
@@ -363,7 +372,7 @@ private fun CustomColorDialog(
                             .clickable { selected = option }
                             .padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.md),
                     ) {
                         Box(
                             modifier = Modifier

@@ -14,28 +14,31 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.monux.ui.components.HighlightCard
 import com.monux.ui.components.HighlightCardTone
 import com.monux.ui.components.OverviewCard
+import com.monux.ui.components.SectionHeader
 import com.monux.ui.state.ConnectionState
+import com.monux.ui.theme.MonuxUi
 
 @Composable
 fun FilesScreen(
     state: ConnectionState,
     padding: PaddingValues,
 ) {
+    val spacing = MonuxUi.spacing
+
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Adaptive(minSize = 172.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            start = 20.dp,
-            end = 20.dp,
-            top = 10.dp + padding.calculateTopPadding(),
-            bottom = 108.dp + padding.calculateBottomPadding(),
+            start = spacing.pageHorizontal,
+            end = spacing.pageHorizontal,
+            top = spacing.pageTop + padding.calculateTopPadding(),
+            bottom = spacing.bottomBarInset + padding.calculateBottomPadding(),
         ),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(spacing.md),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             HighlightCard(
@@ -49,6 +52,12 @@ fun FilesScreen(
                 icon = Icons.Rounded.Folder,
                 badgeText = if (state.fileTransfer.active) "同步中" else "Share Sheet",
                 tone = HighlightCardTone.File,
+            )
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionHeader(
+                title = "传输概览",
+                subtitle = "优先展示目标设备与当前传输状态，保持手机端单列阅读节奏",
             )
         }
         item {
@@ -71,11 +80,11 @@ fun FilesScreen(
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
             HighlightCard(
-                overline = "视觉一致性",
-                title = "投屏与传输一体化",
-                subtitle = "延续系统级卡片层次，统一文件 / 屏幕 / 连接反馈",
+                overline = "使用方式",
+                title = "从系统分享面板发到桌面",
+                subtitle = "统一连接、传输与投屏反馈，不再堆叠额外装饰卡片",
                 icon = Icons.Rounded.Description,
-                badgeText = "高质感",
+                badgeText = if (state.fileTransfer.active) "处理中" else "就绪",
                 tone = HighlightCardTone.Neutral,
             )
         }

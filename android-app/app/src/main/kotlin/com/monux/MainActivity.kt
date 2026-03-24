@@ -4,29 +4,19 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -34,24 +24,23 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.monux.ui.screens.buildFeatureToggles
 import com.monux.ui.screens.FilesScreen
 import com.monux.ui.screens.HomeScreen
 import com.monux.ui.screens.SettingsTab
+import com.monux.ui.screens.buildFeatureToggles
 import com.monux.ui.state.ConnectionState
 import com.monux.ui.theme.MonuxTheme
+import com.monux.ui.theme.MonuxUi
 import java.time.LocalTime
 
 private enum class MainDestination(
@@ -76,22 +65,18 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScreen() {
     val state by MainService.stateFlow().collectAsState()
     val enabledCount = buildFeatureToggles(state).count { it.enabled }
     val currentTab = rememberMainDestination()
-    val background = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.surface,
-            MaterialTheme.colorScheme.surfaceContainerLowest,
-            MaterialTheme.colorScheme.surfaceContainerLow,
-        )
-    )
+    val spacing = MonuxUi.spacing
+    val radii = MonuxUi.radii
+    val elevations = MonuxUi.elevations
 
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             MainTopBar(
                 destination = currentTab.value,
@@ -101,14 +86,14 @@ private fun MainScreen() {
         },
         bottomBar = {
             Surface(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                shape = RoundedCornerShape(32.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-                tonalElevation = 6.dp,
-                shadowElevation = 14.dp,
-                border = androidx.compose.foundation.BorderStroke(
+                modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.md),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.large),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                tonalElevation = elevations.medium,
+                shadowElevation = elevations.low,
+                border = BorderStroke(
                     1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f),
                 ),
             ) {
                 NavigationBar(
@@ -120,7 +105,7 @@ private fun MainScreen() {
                             selected = currentTab.value == destination,
                             onClick = { currentTab.value = destination },
                             colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f),
                             ),
                             icon = { Icon(destination.icon, contentDescription = destination.label) },
                             label = { Text(destination.label) },
@@ -133,42 +118,12 @@ private fun MainScreen() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(background),
+                .background(MaterialTheme.colorScheme.surface)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.06f),
-                                Color.Transparent,
-                            ),
-                            radius = 1400f,
-                        )
-                    ),
-            )
-            AnimatedContent(
-                targetState = currentTab.value,
-                transitionSpec = {
-                    val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                    slideInHorizontally(
-                        animationSpec = tween(300, easing = FastOutSlowInEasing),
-                        initialOffsetX = { fullWidth -> fullWidth / 4 * direction },
-                    ) + fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) togetherWith
-                        slideOutHorizontally(
-                            animationSpec = tween(300, easing = FastOutSlowInEasing),
-                            targetOffsetX = { fullWidth -> -fullWidth / 4 * direction },
-                        ) + fadeOut(animationSpec = tween(220, easing = FastOutSlowInEasing))
-                },
-                label = "main_tab_transition",
-            ) { destination ->
-                when (destination) {
-                    MainDestination.Home -> HomeScreen(state = state, padding = padding)
-                    MainDestination.Files -> FilesScreen(state = state, padding = padding)
-                    MainDestination.Settings -> SettingsTab(state = state, padding = padding)
-                }
+            when (currentTab.value) {
+                MainDestination.Home -> HomeScreen(state = state, padding = padding)
+                MainDestination.Files -> FilesScreen(state = state, padding = padding)
+                MainDestination.Settings -> SettingsTab(state = state, padding = padding)
             }
         }
     }
@@ -187,6 +142,7 @@ private fun MainTopBar(
     enabledCount: Int,
 ) {
     val connected = state.connectionStatus == "已连接"
+    val spacing = MonuxUi.spacing
     val title = when (destination) {
         MainDestination.Home -> greetingText()
         MainDestination.Files -> "文件中心"
@@ -201,26 +157,26 @@ private fun MainTopBar(
         MainDestination.Files -> if (state.fileTransfer.active) {
             "${state.fileTransfer.fileName} 正在同步到 Linux"
         } else {
-            "系统级接力查看当前传输与跨端落盘状态"
+            "查看当前传输状态与目标设备"
         }
         MainDestination.Settings -> if (state.uiPreferences.useDynamicColor) {
-            "Dynamic Color 已启用，整机配色自动同步"
+            "Dynamic Color 已启用"
         } else {
-            "当前使用自定义主色，可继续微调视觉语言"
+            "当前使用自定义主色"
         }
     }
 
-    LargeTopAppBar(
-        colors = TopAppBarDefaults.largeTopAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+    TopAppBar(
+        colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface,
         ),
         title = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
                 )
                 Text(
                     text = subtitle,

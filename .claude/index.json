@@ -1,0 +1,192 @@
+{
+  "generated_at": "2026-03-24T17:25:15",
+  "root": {
+    "path": ".",
+    "claude_md": "CLAUDE.md"
+  },
+  "ignore": {
+    "gitignore_patterns": [
+      "android-app/.gradle/",
+      "android-app/app/build/",
+      "android-app/build/",
+      "*.class",
+      "__pycache__/",
+      "*.pyc",
+      "*.pyo",
+      ".idea/",
+      "*.iml",
+      ".DS_Store"
+    ],
+    "default_patterns": [
+      "node_modules/**",
+      ".git/**",
+      ".github/**",
+      "dist/**",
+      "build/**",
+      ".next/**",
+      "__pycache__/**",
+      "*.lock",
+      "*.log",
+      "*.bin",
+      "*.pdf",
+      "*.png",
+      "*.jpg",
+      "*.jpeg",
+      "*.gif",
+      "*.mp4",
+      "*.zip",
+      "*.tar",
+      "*.gz"
+    ],
+    "top_skipped": [
+      {
+        "path": ".git",
+        "reason": "ignored by default rules"
+      },
+      {
+        "path": "release",
+        "reason": "binary APK artifacts"
+      },
+      {
+        "path": "assets",
+        "reason": "binary image assets"
+      },
+      {
+        "path": "linux-daemon/__pycache__",
+        "reason": "python cache artifacts"
+      },
+      {
+        "path": "tests/__pycache__",
+        "reason": "python cache artifacts"
+      },
+      {
+        "path": "android-app/gradle/wrapper/gradle-wrapper.jar",
+        "reason": "binary jar artifact"
+      }
+    ]
+  },
+  "coverage": {
+    "estimated_total_files": 53,
+    "scanned_files": 43,
+    "coverage_percent": 81.1,
+    "truncated": false
+  },
+  "modules": [
+    {
+      "path": "android-app",
+      "language": ["Kotlin", "Gradle"],
+      "claude_md": "android-app/CLAUDE.md",
+      "responsibility": "Android app, foreground service, WebSocket server, mDNS broadcast, Compose UI and system integrations.",
+      "entrypoints": [
+        "android-app/app/src/main/kotlin/com/monux/MainActivity.kt",
+        "android-app/app/src/main/kotlin/com/monux/MainService.kt",
+        "android-app/app/src/main/kotlin/com/monux/network/WebSocketServer.kt"
+      ],
+      "interfaces": [
+        "android-app/app/src/main/kotlin/com/monux/protocol/Protocol.kt",
+        "android-app/app/src/main/AndroidManifest.xml",
+        "android-app/app/src/main/kotlin/com/monux/notify/MonuxNotificationListener.kt",
+        "android-app/app/src/main/kotlin/com/monux/share/ShareReceiverActivity.kt",
+        "android-app/app/src/main/kotlin/com/monux/sms/SmsReceiver.kt",
+        "android-app/app/src/main/kotlin/com/monux/screen/ScreenTileService.kt",
+        "android-app/app/src/main/kotlin/com/monux/input/InputTileService.kt"
+      ],
+      "tests": [],
+      "important_paths": [
+        "android-app/app/build.gradle.kts",
+        "android-app/settings.gradle.kts",
+        "android-app/build.gradle.kts",
+        "android-app/app/src/main/kotlin/com/monux/ui/state/ConnectionState.kt",
+        "android-app/app/src/main/kotlin/com/monux/ui/screens/HomeScreen.kt"
+      ],
+      "coverage_summary": {
+        "status": "medium",
+        "notes": "Core service, protocol, tiles, SMS, share and key Compose screens scanned. Some UI component/theme files and helper classes not scanned in depth."
+      },
+      "gaps": [
+        "No dedicated Android unit/instrumentation tests found",
+        "No static quality tool config detected",
+        "ClipboardMonitor, SettingsScreen, Theme and component internals not deeply scanned"
+      ]
+    },
+    {
+      "path": "linux-daemon",
+      "language": ["Python"],
+      "claude_md": "linux-daemon/CLAUDE.md",
+      "responsibility": "Linux daemon client, message dispatcher and desktop integrations.",
+      "entrypoints": [
+        "linux-daemon/main.py"
+      ],
+      "interfaces": [
+        "linux-daemon/protocol.py",
+        "linux-daemon/mdns_discover.py",
+        "linux-daemon/handlers/clipboard.py",
+        "linux-daemon/handlers/file.py",
+        "linux-daemon/handlers/input.py",
+        "linux-daemon/handlers/screen.py",
+        "linux-daemon/handlers/sms.py"
+      ],
+      "tests": [
+        "tests/test_integration.py",
+        "tests/test_phase5_file.py",
+        "tests/test_phase6_screen.py"
+      ],
+      "important_paths": [
+        "linux-daemon/watchers/clipboard_watch.py",
+        "linux-daemon/requirements.txt"
+      ],
+      "coverage_summary": {
+        "status": "high",
+        "notes": "Entry, protocol, discovery, watcher and all handler files scanned."
+      },
+      "gaps": [
+        "Notification/SMS/input rely on local desktop tools and lack end-to-end automation",
+        "No persistence/data schema layer present"
+      ]
+    },
+    {
+      "path": "tests",
+      "language": ["Python"],
+      "claude_md": "tests/CLAUDE.md",
+      "responsibility": "Regression tests and mock Android peer.",
+      "entrypoints": [
+        "tests/test_integration.py",
+        "tests/test_phase5_file.py",
+        "tests/test_phase6_screen.py",
+        "tests/mock_android.py"
+      ],
+      "interfaces": [
+        "TESTING.md"
+      ],
+      "tests": [
+        "tests/test_integration.py",
+        "tests/test_phase5_file.py",
+        "tests/test_phase6_screen.py"
+      ],
+      "important_paths": [
+        "tests/README.md"
+      ],
+      "coverage_summary": {
+        "status": "high",
+        "notes": "All visible text test files scanned."
+      },
+      "gaps": [
+        "Clipboard, notification, SMS and remote-input full end-to-end coverage is limited",
+        "No Android UI automation found"
+      ]
+    }
+  ],
+  "gaps": [
+    "Android UI helper/component files not fully scanned",
+    "No dedicated lint/static-analysis configuration detected",
+    "No database/schema layer present, so data model section is necessarily light",
+    "Binary assets and release artifacts were intentionally not read"
+  ],
+  "next_priority_scan": [
+    "android-app/app/src/main/kotlin/com/monux/clipboard/ClipboardMonitor.kt",
+    "android-app/app/src/main/kotlin/com/monux/ui/components",
+    "android-app/app/src/main/kotlin/com/monux/ui/theme/Theme.kt",
+    "android-app/app/src/main/kotlin/com/monux/ui/screens/SettingsScreen.kt",
+    "android-app/gradle.properties"
+  ]
+}

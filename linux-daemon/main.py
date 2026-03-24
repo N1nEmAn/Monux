@@ -16,6 +16,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 from websockets.client import WebSocketClientProtocol
+from websockets.exceptions import ConnectionClosed
 
 from handlers.clipboard import ClipboardPayload, write_clipboard
 from handlers.file import IncomingFileTransfer, ensure_target_dir, notify_file_received, write_chunk
@@ -105,9 +106,15 @@ class MonuxDashboard:
         return Panel(content, box=box.HEAVY, border_style="#FF6A00", title="Monux", subtitle="rich.live")
 
 
+class SessionDisconnected(RuntimeError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
 class MessageDispatcher:
-    def __init__(self, dashboard: MonuxDashboard) -> None:
-        self.dashboard = dashboard
+    def __init__(self, dashboard: MonuxDashboard | None = None) -> None:
+        self.dashboard = dashboard or MonuxDashboard()
         self._handlers: dict[str, Callable[[Envelope], Awaitable[None] | None]] = {
             "clipboard": self.handle_clipboard,
             "notify": self.handle_notify,
@@ -130,10 +137,17 @@ class MessageDispatcher:
         }
         self._ws: WebSocketClientProtocol | None = None
         self._clipboard_watcher: ClipboardWatcher | None = None
+        self._send_json: Callable[[str, str], Awaitable[bool]] | None = None
 
-    def bind(self, ws: WebSocketClientProtocol, clipboard_watcher: ClipboardWatcher) -> None:
+    def bind(
+        self,
+        ws: WebSocketClientProtocol,
+        clipboard_watcher: ClipboardWatcher,
+        send_json: Callable[[str, str], Awaitable[bool]],
+    ) -> None:
         self._ws = ws
         self._clipboard_watcher = clipboard_watcher
+        self._send_json = send_json
 
     async def dispatch(self, message: Envelope) -> None:
         self.dashboard.record_message(message.type)
@@ -176,8 +190,7 @@ class MessageDispatcher:
         logging.info("sms mirrored from=%s", sender)
         self.dashboard.update(last_event=f"短信来自：{sender}")
         reply = await asyncio.to_thread(prompt_sms_reply, sender, body)
-        if reply and self._ws is not None:
-            await self._ws.send(Envelope(type="sms.send", payload={"address": sender, "body": reply}).to_json())
+        if reply and await self._send(Envelope(type="sms.send", payload={"address": sender, "body": reply}).to_json(), "sms.send reply"):
             logging.info("sms reply sent to android sender=%s", sender)
             self.dashboard.update(last_event=f"短信已回复：{sender}")
 
@@ -226,8 +239,10 @@ class MessageDispatcher:
         notify_file_received(transfer.path)
         logging.info("file received path=%s", transfer.path)
         self.dashboard.update(last_event=f"文件完成：{transfer.name}")
-        if self._ws is not None:
-            await self._ws.send(Envelope(type="file.received", payload={"transfer_id": transfer_id, "path": str(transfer.path)}).to_json())
+        await self._send(
+            Envelope(type="file.received", payload={"transfer_id": transfer_id, "path": str(transfer.path)}).to_json(),
+            "file.received ack",
+        )
 
     async def handle_file_error(self, message: Envelope) -> None:
         transfer_id = str(message.payload.get("transfer_id", ""))
@@ -241,15 +256,13 @@ class MessageDispatcher:
         success, detail = await asyncio.to_thread(SCRCPY.start, ScreenConfig(max_size=max_size, bitrate=bitrate))
         logging.info("screen start success=%s detail=%s", success, detail)
         self.dashboard.update(last_event=f"投屏启动：{detail}")
-        if self._ws is not None:
-            await self._ws.send(Envelope(type="screen.started", payload={"success": success, "message": detail}).to_json())
+        await self._send(Envelope(type="screen.started", payload={"success": success, "message": detail}).to_json(), "screen.started")
 
     async def handle_screen_stop(self, message: Envelope) -> None:
         success, detail = await asyncio.to_thread(SCRCPY.stop)
         logging.info("screen stop success=%s detail=%s", success, detail)
         self.dashboard.update(last_event=f"投屏停止：{detail}")
-        if self._ws is not None:
-            await self._ws.send(Envelope(type="screen.started", payload={"success": False, "message": detail}).to_json())
+        await self._send(Envelope(type="screen.started", payload={"success": False, "message": detail}).to_json(), "screen.stopped")
 
     async def handle_input_text(self, message: Envelope) -> None:
         text = str(message.payload.get("text", ""))
@@ -283,8 +296,7 @@ class MessageDispatcher:
             message.payload.get("version", "unknown"),
         )
         self.dashboard.update(device_name=device_name, last_event=f"收到 hello：{device_name}")
-        if self._ws is not None:
-            await self._ws.send(hello_ack().to_json())
+        await self._send(hello_ack().to_json(), "hello_ack")
 
     async def handle_hello_ack(self, message: Envelope) -> None:
         device_name = str(message.payload.get("device_name", "unknown"))
@@ -297,12 +309,17 @@ class MessageDispatcher:
         self.dashboard.update(device_name=device_name, last_event=f"握手完成：{device_name}")
 
     async def handle_ping(self, message: Envelope) -> None:
-        if self._ws is not None:
-            await self._ws.send(pong().to_json())
+        await self._send(pong().to_json(), "pong")
         logging.debug("ping received")
 
     async def handle_pong(self, message: Envelope) -> None:
         logging.debug("pong received")
+
+    async def _send(self, payload: str, context: str) -> bool:
+        sender = self._send_json
+        if sender is None or self._ws is None:
+            return False
+        return await sender(payload, context)
 
 
 class MonuxDaemon:
@@ -310,6 +327,9 @@ class MonuxDaemon:
         self.config = config
         self.dashboard = MonuxDashboard()
         self.dispatcher = MessageDispatcher(self.dashboard)
+        self._session_closing = False
+        self._disconnect_reason = "连接已断开"
+        self._active_ws: WebSocketClientProtocol | None = None
 
     async def run(self) -> None:
         with Live(self.dashboard.render(), console=CONSOLE, refresh_per_second=4, screen=False) as live:
@@ -317,6 +337,10 @@ class MonuxDaemon:
                 try:
                     live.update(self.dashboard.render())
                     await self._run_session(live)
+                except SessionDisconnected as exc:
+                    logging.info("session ended: %s", exc.reason)
+                    self.dashboard.update(status="等待重连", last_event=exc.reason)
+                    live.update(self.dashboard.render())
                 except Exception as exc:
                     logging.exception("connection loop failed: %s", exc)
                     self.dashboard.update(status="连接异常", last_event=str(exc))
@@ -330,22 +354,49 @@ class MonuxDaemon:
         self.dashboard.update(device_url=device_url, status="正在连接", last_event=f"连接 {device_url}")
         live.update(self.dashboard.render())
         logging.info("connecting to %s", device_url)
+        self._session_closing = False
+        self._disconnect_reason = "连接已断开"
         async with websockets.connect(device_url, ping_interval=None, ping_timeout=None) as ws:
+            self._active_ws = ws
             clipboard_watcher = ClipboardWatcher(self._push_clipboard_update, self.config.clipboard_poll_interval)
-            self.dispatcher.bind(ws, clipboard_watcher)
+            self.dispatcher.bind(ws, clipboard_watcher, self._safe_send_text)
             heartbeat_task = asyncio.create_task(self._heartbeat_loop(ws, live))
             clipboard_task = asyncio.create_task(clipboard_watcher.run())
             self.dashboard.update(status="已连接", connected_since=datetime.now().strftime("%H:%M:%S"), last_event="WebSocket 已连接")
             live.update(self.dashboard.render())
             try:
                 await self._on_connect(ws, live)
-                async for raw in ws:
-                    await self._handle_message(raw, live)
+                try:
+                    async for raw in ws:
+                        await self._handle_message(raw, live)
+                    close_code = getattr(ws, "close_code", None)
+                    close_reason = getattr(ws, "close_reason", None) or "远端结束会话"
+                    if close_code in (1000, 1001):
+                        self._disconnect_reason = f"连接正常关闭 code={close_code} reason={close_reason}"
+                    elif close_code is None:
+                        self._disconnect_reason = close_reason
+                    else:
+                        self._disconnect_reason = f"连接中断 code={close_code} reason={close_reason}"
+                    raise SessionDisconnected(self._disconnect_reason)
+                except ConnectionClosed as exc:
+                    reason = self._classify_disconnect(exc)
+                    self._disconnect_reason = reason
+                    self.dashboard.update(status="等待重连", last_event=reason)
+                    live.update(self.dashboard.render())
+                    raise SessionDisconnected(reason) from exc
             finally:
+                self._session_closing = True
                 heartbeat_task.cancel()
                 clipboard_task.cancel()
                 await asyncio.gather(heartbeat_task, clipboard_task, return_exceptions=True)
-                self.dashboard.update(status="等待重连", last_event="连接已断开")
+                try:
+                    if not ws.closed:
+                        await ws.close(code=1000, reason="daemon session closing")
+                    await asyncio.wait_for(ws.wait_closed(), timeout=1)
+                except Exception as exc:
+                    logging.debug("graceful close skipped: %s", exc)
+                self._active_ws = None
+                self.dashboard.update(status="等待重连", last_event=self._disconnect_reason)
                 live.update(self.dashboard.render())
 
     async def _resolve_device_url(self) -> str:
@@ -359,7 +410,7 @@ class MonuxDaemon:
         return device.ws_url
 
     async def _on_connect(self, ws: WebSocketClientProtocol, live: Live) -> None:
-        await ws.send(hello().to_json())
+        await self._safe_send_text(hello().to_json(), "hello")
         logging.info("hello sent")
         self.dashboard.update(last_event="已发送 hello")
         live.update(self.dashboard.render())
@@ -367,21 +418,50 @@ class MonuxDaemon:
     async def _heartbeat_loop(self, ws: WebSocketClientProtocol, live: Live) -> None:
         while True:
             await asyncio.sleep(self.config.heartbeat_interval)
-            await ws.send(ping().to_json())
+            if ws is not self._active_ws or self._session_closing:
+                return
+            await self._safe_send_text(ping().to_json(), "heartbeat ping")
             logging.debug("ping sent")
             self.dashboard.update(last_event="心跳 ping 已发送")
             live.update(self.dashboard.render())
 
     async def _push_clipboard_update(self, payload: ClipboardPayload) -> None:
-        if self.dispatcher._ws is None:
+        if self.dispatcher._ws is None or self._session_closing:
             return
         envelope = Envelope(
             type="clipboard",
             payload={"text": payload.text, "content_hash": payload.content_hash},
         )
-        await self.dispatcher._ws.send(envelope.to_json())
+        await self._safe_send_text(envelope.to_json(), "clipboard sync")
         logging.info("clipboard pushed hash=%s", payload.content_hash[:12])
         self.dashboard.update(last_event=f"推送剪贴板：{payload.content_hash[:8]}")
+
+    async def _safe_send_text(self, payload: str, context: str) -> bool:
+        ws = self._active_ws
+        if ws is None or self._session_closing:
+            return False
+        try:
+            await ws.send(payload)
+            return True
+        except ConnectionClosed as exc:
+            reason = self._classify_disconnect(exc)
+            self._disconnect_reason = reason
+            logging.info("send interrupted context=%s reason=%s", context, reason)
+            raise SessionDisconnected(reason) from exc
+        except Exception as exc:
+            reason = f"{context} 发送失败: {exc}"
+            self._disconnect_reason = reason
+            logging.warning("send failed context=%s", context, exc_info=exc)
+            raise SessionDisconnected(reason) from exc
+
+    def _classify_disconnect(self, exc: ConnectionClosed) -> str:
+        code = getattr(exc, "code", None)
+        reason = getattr(exc, "reason", None) or "peer closed"
+        if code in (1000, 1001):
+            return f"连接正常关闭 code={code} reason={reason}"
+        if "no close frame received or sent" in str(exc):
+            return "连接异常中断：未完成 close 握手"
+        return f"连接中断 code={code} reason={reason}"
 
     async def _handle_message(self, raw: str, live: Live) -> None:
         try:

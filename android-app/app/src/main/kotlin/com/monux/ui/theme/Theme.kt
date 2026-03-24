@@ -1,6 +1,5 @@
 package com.monux.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -9,9 +8,14 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.core.graphics.ColorUtils
 import com.monux.ui.state.UiPreferences
 
@@ -28,6 +32,49 @@ private val FallbackDarkColors = darkColorScheme(
     tertiary = Color(0xFFE2B28B),
     surfaceTint = Color(0xFFFFB37D),
 )
+
+@Immutable
+data class MonuxSpacing(
+    val xs: Dp = 4.dp,
+    val sm: Dp = 8.dp,
+    val md: Dp = 12.dp,
+    val lg: Dp = 16.dp,
+    val xl: Dp = 20.dp,
+    val xxl: Dp = 24.dp,
+    val pageHorizontal: Dp = 20.dp,
+    val pageTop: Dp = 12.dp,
+    val bottomBarInset: Dp = 104.dp,
+)
+
+@Immutable
+data class MonuxRadii(
+    val small: Dp = 16.dp,
+    val medium: Dp = 22.dp,
+    val large: Dp = 26.dp,
+    val pill: Dp = 999.dp,
+)
+
+@Immutable
+data class MonuxElevations(
+    val low: Dp = 0.dp,
+    val medium: Dp = 2.dp,
+    val high: Dp = 4.dp,
+)
+
+private val LocalMonuxSpacing = staticCompositionLocalOf { MonuxSpacing() }
+private val LocalMonuxRadii = staticCompositionLocalOf { MonuxRadii() }
+private val LocalMonuxElevations = staticCompositionLocalOf { MonuxElevations() }
+
+object MonuxUi {
+    val spacing: MonuxSpacing
+        @Composable get() = LocalMonuxSpacing.current
+
+    val radii: MonuxRadii
+        @Composable get() = LocalMonuxRadii.current
+
+    val elevations: MonuxElevations
+        @Composable get() = LocalMonuxElevations.current
+}
 
 @Composable
 fun MonuxTheme(
@@ -60,10 +107,16 @@ fun MonuxTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content,
-    )
+    CompositionLocalProvider(
+        LocalMonuxSpacing provides MonuxSpacing(),
+        LocalMonuxRadii provides MonuxRadii(),
+        LocalMonuxElevations provides MonuxElevations(),
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            content = content,
+        )
+    }
 }
 
 private fun Color.lighten(amount: Float): Color {

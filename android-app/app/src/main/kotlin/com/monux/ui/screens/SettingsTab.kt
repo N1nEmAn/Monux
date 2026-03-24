@@ -9,23 +9,25 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.monux.MainService
 import com.monux.ui.components.HighlightCard
 import com.monux.ui.components.HighlightCardTone
 import com.monux.ui.state.ConnectionState
+import com.monux.ui.theme.MonuxUi
 
 @Composable
 fun SettingsTab(
     state: ConnectionState,
     padding: PaddingValues,
 ) {
+    val spacing = MonuxUi.spacing
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp)
-            .padding(top = 10.dp + padding.calculateTopPadding(), bottom = 108.dp + padding.calculateBottomPadding()),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+            .padding(horizontal = spacing.pageHorizontal)
+            .padding(top = spacing.pageTop + padding.calculateTopPadding(), bottom = spacing.bottomBarInset + padding.calculateBottomPadding()),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         HighlightCard(
             overline = "外观速览",
@@ -33,7 +35,7 @@ fun SettingsTab(
             subtitle = if (state.uiPreferences.useDynamicColor) {
                 "跟随系统壁纸实时取色，保持整机一致性"
             } else {
-                "当前主色可在下方卡片中继续微调"
+                "当前主色可在下方继续微调"
             },
             icon = Icons.Rounded.Settings,
             badgeText = if (state.uiPreferences.useDynamicColor) "Material You" else "自定义",

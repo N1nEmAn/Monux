@@ -28,6 +28,7 @@ import com.monux.ui.components.HighlightCardTone
 import com.monux.ui.components.OverviewCard
 import com.monux.ui.components.SectionHeader
 import com.monux.ui.state.ConnectionState
+import com.monux.ui.theme.MonuxUi
 
 fun buildFeatureToggles(state: ConnectionState): List<FeatureToggle> = listOf(
     FeatureToggle(
@@ -82,23 +83,25 @@ fun HomeScreen(
     val toggles = buildFeatureToggles(state)
     val enabledCount = toggles.count { it.enabled }
     val connected = state.connectionStatus == "已连接"
+    val spacing = MonuxUi.spacing
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 168.dp),
+        columns = GridCells.Adaptive(minSize = 172.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            start = 20.dp,
-            end = 20.dp,
-            top = 10.dp + padding.calculateTopPadding(),
-            bottom = 108.dp + padding.calculateBottomPadding(),
+            start = spacing.pageHorizontal,
+            end = spacing.pageHorizontal,
+            top = spacing.pageTop + padding.calculateTopPadding(),
+            bottom = spacing.bottomBarInset + padding.calculateBottomPadding(),
         ),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(spacing.md),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            SectionHeader(
-                title = "连接概览",
-                subtitle = "先看连接状态与跨端关键提示",
+            ConnectionCard(
+                deviceName = state.deviceName,
+                deviceIp = state.deviceIp,
+                status = state.connectionStatus,
             )
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -121,16 +124,9 @@ fun HomeScreen(
             )
         }
         item(span = { GridItemSpan(maxLineSpan) }) {
-            ConnectionCard(
-                deviceName = state.deviceName,
-                deviceIp = state.deviceIp,
-                status = state.connectionStatus,
-            )
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
             SectionHeader(
-                title = "重点状态",
-                subtitle = "保留最关键的两张概览卡，减少首屏竞争注意力",
+                title = "核心概览",
+                subtitle = "只保留最重要的连接与能力状态，减少首页分心元素",
             )
         }
         item {
@@ -154,7 +150,7 @@ fun HomeScreen(
         item(span = { GridItemSpan(maxLineSpan) }) {
             SectionHeader(
                 title = "能力矩阵",
-                subtitle = "像系统设置一样快速访问通知、剪贴板、短信、文件、投屏与输入",
+                subtitle = "快速调整通知、剪贴板、短信、文件、投屏与输入能力",
             )
         }
         items(toggles, key = { it.key }) { feature ->

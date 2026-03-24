@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -29,12 +28,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.monux.ui.theme.MonuxUi
 
 data class FeatureToggle(
     val key: String,
@@ -56,7 +55,9 @@ fun SectionHeader(
     title: String,
     subtitle: String,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    val spacing = MonuxUi.spacing
+
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
         Text(
             text = title,
             style = MaterialTheme.typography.headlineSmall,
@@ -78,23 +79,27 @@ fun OverviewCard(
     value: String,
     subtitle: String,
 ) {
+    val spacing = MonuxUi.spacing
+    val radii = MonuxUi.radii
+    val elevations = MonuxUi.elevations
+
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(30.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.medium),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 2.dp,
-        shadowElevation = 6.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+        tonalElevation = elevations.medium,
+        shadowElevation = elevations.low,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.26f)),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.64f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -106,7 +111,7 @@ fun OverviewCard(
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.displayMedium,
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
@@ -130,27 +135,14 @@ fun HighlightCard(
     tone: HighlightCardTone = HighlightCardTone.Brand,
     onClick: (() -> Unit)? = null,
 ) {
-    val colors = when (tone) {
-        HighlightCardTone.Brand -> listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
-            MaterialTheme.colorScheme.surfaceContainerLow,
-        )
-        HighlightCardTone.File -> listOf(
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.56f),
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
-            MaterialTheme.colorScheme.surfaceContainerLow,
-        )
-        HighlightCardTone.Settings -> listOf(
-            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f),
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-            MaterialTheme.colorScheme.surfaceContainerLow,
-        )
-        HighlightCardTone.Neutral -> listOf(
-            MaterialTheme.colorScheme.surfaceContainerHigh,
-            MaterialTheme.colorScheme.surfaceContainerLow,
-            MaterialTheme.colorScheme.surface,
-        )
+    val spacing = MonuxUi.spacing
+    val radii = MonuxUi.radii
+    val elevations = MonuxUi.elevations
+    val containerColor = when (tone) {
+        HighlightCardTone.Brand -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.48f)
+        HighlightCardTone.File -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+        HighlightCardTone.Settings -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.38f)
+        HighlightCardTone.Neutral -> MaterialTheme.colorScheme.surfaceContainer
     }
     val accentColor = when (tone) {
         HighlightCardTone.Brand -> MaterialTheme.colorScheme.primary
@@ -161,22 +153,21 @@ fun HighlightCard(
     val badgeColor = if (tone == HighlightCardTone.Neutral) {
         MaterialTheme.colorScheme.surfaceContainerHighest
     } else {
-        MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .let { base -> if (onClick != null) base.clickable(onClick = onClick) else base },
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.medium),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevations.low),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)),
     ) {
         Column(
-            modifier = Modifier
-                .background(Brush.linearGradient(colors))
-                .padding(22.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -190,7 +181,7 @@ fun HighlightCard(
                 )
                 if (badgeText != null) {
                     Surface(
-                        shape = RoundedCornerShape(999.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.pill),
                         color = badgeColor,
                     ) {
                         Text(
@@ -203,22 +194,22 @@ fun HighlightCard(
                 }
             }
             Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(spacing.lg),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
                     modifier = Modifier
-                        .size(54.dp)
-                        .clip(RoundedCornerShape(22.dp))
+                        .size(52.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(radii.small))
                         .background(accentColor.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(icon, contentDescription = null, tint = accentColor)
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
@@ -238,9 +229,11 @@ fun FeatureToggleCard(
     feature: FeatureToggle,
     onToggle: (Boolean) -> Unit,
 ) {
+    val spacing = MonuxUi.spacing
+    val radii = MonuxUi.radii
     val containerColor by animateColorAsState(
         targetValue = if (feature.enabled) {
-            MaterialTheme.colorScheme.surfaceContainerHigh
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.46f)
         } else {
             MaterialTheme.colorScheme.surfaceContainerLow
         },
@@ -249,16 +242,16 @@ fun FeatureToggleCard(
     )
     val borderColor by animateColorAsState(
         targetValue = if (feature.enabled) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
         } else {
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.24f)
         },
         animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f),
         label = "featureCardBorder",
     )
     val iconContainerColor by animateColorAsState(
         targetValue = if (feature.enabled) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
         } else {
             MaterialTheme.colorScheme.surfaceContainerHighest
         },
@@ -268,18 +261,18 @@ fun FeatureToggleCard(
 
     Surface(
         modifier = modifier
-            .height(172.dp)
+            .height(168.dp)
             .clickable { onToggle(!feature.enabled) },
-        shape = RoundedCornerShape(28.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.medium),
         color = containerColor,
-        tonalElevation = if (feature.enabled) 8.dp else 2.dp,
-        shadowElevation = if (feature.enabled) 12.dp else 4.dp,
+        tonalElevation = 2.dp,
+        shadowElevation = 0.dp,
         border = BorderStroke(1.dp, borderColor),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(spacing.lg),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Row(
@@ -290,7 +283,7 @@ fun FeatureToggleCard(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(radii.small))
                         .background(iconContainerColor),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -298,7 +291,7 @@ fun FeatureToggleCard(
                 }
                 Switch(checked = feature.enabled, onCheckedChange = onToggle)
             }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 Text(
                     text = feature.name,
                     style = MaterialTheme.typography.titleMedium,
@@ -314,9 +307,9 @@ fun FeatureToggleCard(
             }
             AnimatedVisibility(feature.enabled) {
                 Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.pill),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
                 ) {
                     Text(
                         text = "已启用",

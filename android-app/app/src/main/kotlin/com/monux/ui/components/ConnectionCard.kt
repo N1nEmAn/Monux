@@ -1,38 +1,23 @@
 package com.monux.ui.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.monux.ui.theme.MonuxUi
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -43,93 +28,75 @@ fun ConnectionCard(
     modifier: Modifier = Modifier,
 ) {
     val connected = status == "已连接"
-    val pulse = rememberInfiniteTransition(label = "connectionPulse").animateFloat(
-        initialValue = 0.82f,
-        targetValue = 1.18f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulseScale",
-    )
-    val shimmer = rememberInfiniteTransition(label = "connectionShimmer").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1700, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "shimmerShift",
-    )
-    val connectedBrush = Brush.linearGradient(
-        listOf(
-            MaterialTheme.colorScheme.tertiary,
-            MaterialTheme.colorScheme.tertiaryContainer,
-            MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.72f),
-        )
-    )
-    val disconnectedBrush = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.surfaceVariant,
-            MaterialTheme.colorScheme.surface,
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
-        ),
-        start = androidx.compose.ui.geometry.Offset.Zero,
-        end = androidx.compose.ui.geometry.Offset(900f * shimmer.value, 500f),
-    )
+    val spacing = MonuxUi.spacing
+    val radii = MonuxUi.radii
+    val elevations = MonuxUi.elevations
+    val containerColor = if (connected) {
+        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.72f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    }
+    val borderColor = if (connected) {
+        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.26f)
+    } else {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.34f)
+    }
     val statusLabel = if (connected) "低延迟在线" else "等待握手"
     val headline = if (connected) "已连接" else "发现中"
     val capability = if (connected) "通知 / 文件 / 剪贴板" else "等待附近设备"
+    val accent = if (connected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
+    val headlineColor = if (connected) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurface
+    val bodyColor = if (connected) {
+        MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
-    Card(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(34.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 14.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.large),
+        color = containerColor,
+        tonalElevation = elevations.medium,
+        shadowElevation = elevations.low,
+        border = BorderStroke(1.dp, borderColor),
     ) {
-        Box(
-            modifier = Modifier
-                .background(if (connected) connectedBrush else disconnectedBrush)
-                .padding(24.dp),
+        Column(
+            modifier = Modifier.padding(spacing.xxl),
+            verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StatusPill(label = statusLabel, active = connected)
-                    Box(contentAlignment = Alignment.Center) {
-                        if (connected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp * pulse.value)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.18f)),
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(14.dp)
-                                .clip(CircleShape)
-                                .background(if (connected) Color.White else MaterialTheme.colorScheme.outline),
-                        )
-                    }
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StatusPill(label = statusLabel, active = connected)
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = accent,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 Text(
                     text = headline,
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (connected) Color.White else MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = headlineColor,
                 )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    SummaryTag(text = deviceName, active = connected)
-                    SummaryTag(text = deviceIp, active = connected)
-                    SummaryTag(text = capability, active = connected)
-                }
+                Text(
+                    text = "$deviceName · $deviceIp",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = bodyColor,
+                )
+            }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(spacing.sm),
+            ) {
+                SummaryTag(text = deviceName, active = connected)
+                SummaryTag(text = deviceIp, active = connected)
+                SummaryTag(text = capability, active = connected)
             }
         }
     }
@@ -140,19 +107,29 @@ private fun StatusPill(
     label: String,
     active: Boolean,
 ) {
+    val radii = MonuxUi.radii
+
     Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = if (active) Color.White.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.74f),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.pill),
+        color = if (active) {
+            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
         border = BorderStroke(
             width = 1.dp,
-            color = if (active) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+            color = if (active) {
+                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.22f)
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            },
         ),
     ) {
         Text(
             text = label,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
             style = MaterialTheme.typography.labelLarge,
-            color = if (active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (active) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -162,19 +139,29 @@ private fun SummaryTag(
     text: String,
     active: Boolean,
 ) {
+    val radii = MonuxUi.radii
+
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = if (active) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(radii.small),
+        color = if (active) {
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.52f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        },
         border = BorderStroke(
             width = 1.dp,
-            color = if (active) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+            color = if (active) {
+                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f)
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f)
+            },
         ),
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             style = MaterialTheme.typography.labelLarge,
-            color = if (active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

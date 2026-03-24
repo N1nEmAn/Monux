@@ -16,6 +16,11 @@ async def run_mock() -> None:
         await asyncio.Future()
 
 
+async def close_without_handshake(websocket: websockets.WebSocketServerProtocol) -> None:
+    await asyncio.sleep(0.1)
+    websocket.transport.close()
+
+
 async def handle_client(websocket: websockets.WebSocketServerProtocol) -> None:
     raw = await websocket.recv()
     hello = json.loads(raw)
@@ -75,6 +80,9 @@ async def handle_client(websocket: websockets.WebSocketServerProtocol) -> None:
     async for message in websocket:
         parsed = json.loads(message)
         print(f"daemon -> mock_android: {parsed}")
+        if parsed.get("type") == "file.received":
+            await close_without_handshake(websocket)
+            break
 
 
 if __name__ == "__main__":

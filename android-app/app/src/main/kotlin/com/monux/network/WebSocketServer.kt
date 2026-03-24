@@ -6,6 +6,7 @@ import fi.iki.elonen.NanoWSD
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 class WebSocketServer(
     private val port: Int,
@@ -24,21 +25,23 @@ class WebSocketServer(
     }
 
     fun stopServer() {
-        sockets.forEach { socket ->
-            runCatching { socket.close(WebSocketFrame.CloseCode.NormalClosure, "service stopping", false) }
+        sockets.toList().forEach { socket ->
+            socket.shutdown("service stopping")
         }
-        sockets.clear()
         stop()
         Log.i(TAG, "WebSocket server stopped")
     }
 
     fun hasConnections(): Boolean = sockets.isNotEmpty()
 
-    fun broadcast(text: String) {
-        sockets.forEach { socket ->
-            runCatching { socket.send(text) }
-                .onFailure { Log.w(TAG, "broadcast failed", it) }
+    fun broadcast(text: String): Int {
+        var delivered = 0
+        sockets.toList().forEach { socket ->
+            if (socket.sendSafely(text, "broadcast")) {
+                delivered += 1
+            }
         }
+        return delivered
     }
 
     override fun openWebSocket(handshake: IHTTPSession?): WebSocket {
@@ -46,15 +49,16 @@ class WebSocketServer(
     }
 
     private inner class ClientSocket(private val session: IHTTPSession?) : WebSocket(session) {
+        private val cleanedUp = AtomicBoolean(false)
+
         override fun onOpen() {
             sockets += this
             onClientConnected(session?.remoteIpAddress ?: "unknown")
-            send(Protocol.hello(deviceName, PLATFORM_ANDROID).toString())
+            sendSafely(Protocol.hello(deviceName, PLATFORM_ANDROID).toString(), "hello")
         }
 
         override fun onClose(code: WebSocketFrame.CloseCode?, reason: String?, initiatedByRemote: Boolean) {
-            sockets -= this
-            onClientDisconnected(reason)
+            cleanupSocket(reason ?: code?.name ?: "socket closed")
         }
 
         override fun onMessage(message: WebSocketFrame) {
@@ -69,9 +73,15 @@ class WebSocketServer(
                     val peerName = inner?.optString("device_name").orEmpty()
                     val peerPlatform = inner?.optString("platform").orEmpty()
                     onPeerHello(peerName, peerPlatform)
-                    send(Protocol.helloAck(deviceName, PLATFORM_ANDROID).toString())
+                    if (!sendSafely(Protocol.helloAck(deviceName, PLATFORM_ANDROID).toString(), "hello_ack")) {
+                        return
+                    }
                 }
-                Protocol.TYPE_PING -> send(Protocol.pong().toString())
+                Protocol.TYPE_PING -> {
+                    if (!sendSafely(Protocol.pong().toString(), "pong")) {
+                        return
+                    }
+                }
             }
             onMessageReceived(payload)
         }
@@ -81,7 +91,30 @@ class WebSocketServer(
         }
 
         override fun onException(exception: IOException?) {
-            Log.e(TAG, "socket error", exception)
+            cleanupSocket(exception?.message ?: "socket error", exception)
+        }
+
+        fun sendSafely(text: String, context: String): Boolean {
+            return runCatching { send(text) }
+                .onFailure { cleanupSocket("$context failed: ${it.message ?: it.javaClass.simpleName}", it) }
+                .isSuccess
+        }
+
+        fun shutdown(reason: String) {
+            runCatching { close(WebSocketFrame.CloseCode.NormalClosure, reason, false) }
+                .onFailure { cleanupSocket(reason, it) }
+            cleanupSocket(reason)
+        }
+
+        private fun cleanupSocket(reason: String?, exception: Throwable? = null) {
+            if (!cleanedUp.compareAndSet(false, true)) {
+                return
+            }
+            sockets -= this
+            if (exception != null) {
+                Log.w(TAG, "socket cleanup reason=$reason", exception)
+            }
+            onClientDisconnected(reason)
         }
     }
 

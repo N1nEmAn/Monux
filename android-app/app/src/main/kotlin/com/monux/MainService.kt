@@ -10,8 +10,8 @@ import android.content.Intent
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
-import android.os.IBinder
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import android.service.quicksettings.TileService
 import android.util.Log
@@ -46,7 +46,7 @@ class MainService : Service() {
     private val heartbeatHandler = Handler(Looper.getMainLooper())
     private val heartbeatRunnable = object : Runnable {
         override fun run() {
-            webSocketServer?.broadcast(Protocol.ping().toString())
+            broadcastToLinux(Protocol.ping().toString(), "heartbeat ping")
             heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS)
         }
     }
@@ -57,17 +57,17 @@ class MainService : Service() {
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardSyncManager = ClipboardSyncManager(
             clipboardManager = clipboardManager!!,
-            sendMessage = { payload -> webSocketServer?.broadcast(payload) },
+            sendMessage = { payload -> broadcastToLinux(payload, "clipboard") },
         )
         fileTransferManager = FileTransferManager(
             contentResolver = contentResolver,
-            sendMessage = { payload -> webSocketServer?.broadcast(payload) },
+            sendMessage = { payload -> broadcastToLinux(payload, "file transfer") },
             onProgress = { fileName, progress ->
                 state.value = state.value.copy(fileTransfer = FileTransferState(fileName = fileName, progress = progress, active = progress < 1f))
             },
         )
         screenSessionManager = ScreenSessionManager(
-            sendMessage = { payload -> webSocketServer?.broadcast(payload) },
+            sendMessage = { payload -> broadcastToLinux(payload, "screen session") },
         )
         clipboardMonitor = ClipboardMonitor(clipboardManager!!) { text ->
             if (state.value.featureFlags.clipboard) {
@@ -120,7 +120,7 @@ class MainService : Service() {
                     Log.i(TAG, "linux daemon connected remote=$remote")
                 },
                 onClientDisconnected = { reason ->
-                    state.value = state.value.copy(connectionStatus = "等待重连")
+                    state.value = state.value.copy(connectionStatus = if (webSocketServer == null) "未连接" else "等待重连")
                     refreshNotification()
                     Log.i(TAG, "linux daemon disconnected reason=$reason")
                 },
@@ -162,7 +162,7 @@ class MainService : Service() {
                     onSuccess = { Protocol.smsSent(address, true) },
                     onFailure = { Protocol.smsSent(address, false, it.message.orEmpty()) },
                 )
-                webSocketServer?.broadcast(ack.toString())
+                broadcastToLinux(ack.toString(), "sms.sent ack")
             }
             Protocol.TYPE_FILE_RECEIVED -> {
                 state.value = state.value.copy(fileTransfer = FileTransferState())
@@ -243,11 +243,25 @@ class MainService : Service() {
         manager.notify(NOTIFICATION_ID, foregroundNotification())
     }
 
+    private fun broadcastToLinux(payload: String, context: String): Boolean {
+        val server = webSocketServer ?: return false
+        val delivered = server.broadcast(payload)
+        if (delivered == 0) {
+            if (state.value.connectionStatus == "已连接") {
+                state.value = state.value.copy(connectionStatus = "等待重连")
+                refreshNotification()
+            }
+            Log.w(TAG, "broadcast skipped context=$context no active linux client")
+            return false
+        }
+        return true
+    }
+
     fun mirrorNotification(appName: String, title: String, body: String) {
         if (!state.value.featureFlags.notifications) {
             return
         }
-        webSocketServer?.broadcast(Protocol.notify(appName, title, body).toString())
+        broadcastToLinux(Protocol.notify(appName, title, body).toString(), "notification mirror")
     }
 
     companion object {
@@ -288,7 +302,7 @@ class MainService : Service() {
             if (!state.value.featureFlags.notifications) {
                 return
             }
-            service.webSocketServer?.broadcast(payload)
+            service.broadcastToLinux(payload, "notification forward")
         }
 
         fun forwardSms(sender: String, body: String) {
@@ -296,7 +310,7 @@ class MainService : Service() {
             if (!state.value.featureFlags.sms) {
                 return
             }
-            service.webSocketServer?.broadcast(Protocol.sms(sender, body).toString())
+            service.broadcastToLinux(Protocol.sms(sender, body).toString(), "sms forward")
         }
 
         fun toggleScreenMirror() {
@@ -323,8 +337,7 @@ class MainService : Service() {
                 return false
             }
             val payload = if (fromVoice) Protocol.inputVoice(text) else Protocol.inputText(text)
-            service.webSocketServer?.broadcast(payload.toString())
-            return true
+            return service.broadcastToLinux(payload.toString(), "remote input text")
         }
 
         fun sendRemoteInputKey(key: String): Boolean {
@@ -332,8 +345,7 @@ class MainService : Service() {
             if (!state.value.featureFlags.remoteInput || key.isBlank() || service.webSocketServer?.hasConnections() != true) {
                 return false
             }
-            service.webSocketServer?.broadcast(Protocol.inputKey(key).toString())
-            return true
+            return service.broadcastToLinux(Protocol.inputKey(key).toString(), "remote input key")
         }
 
         fun updateScreenConfig(maxSize: Int, bitrate: String) {
