@@ -1,6 +1,5 @@
 package com.monux.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -8,15 +7,14 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -30,14 +28,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ConnectionCard(
     deviceName: String,
@@ -80,6 +77,9 @@ fun ConnectionCard(
         start = androidx.compose.ui.geometry.Offset.Zero,
         end = androidx.compose.ui.geometry.Offset(900f * shimmer.value, 500f),
     )
+    val statusLabel = if (connected) "低延迟在线" else "等待握手"
+    val headline = if (connected) "已连接" else "发现中"
+    val capability = if (connected) "通知 / 文件 / 剪贴板" else "等待附近设备"
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -92,60 +92,43 @@ fun ConnectionCard(
                 .background(if (connected) connectedBrush else disconnectedBrush)
                 .padding(24.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "设备连接状态",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (connected) Color.White.copy(alpha = 0.84f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = deviceName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (connected) Color.White else MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = deviceIp,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (connected) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    StatusPill(
-                        label = if (connected) "已连接 · 低延迟稳定传输" else "发现中 · 等待握手",
-                        active = connected,
-                    )
-                }
-
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
+                    StatusPill(label = statusLabel, active = connected)
                     Box(contentAlignment = Alignment.Center) {
                         if (connected) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp * pulse.value)
+                                    .size(36.dp * pulse.value)
                                     .clip(CircleShape)
                                     .background(Color.White.copy(alpha = 0.18f)),
                             )
                         }
                         Box(
                             modifier = Modifier
-                                .size(18.dp)
+                                .size(14.dp)
                                 .clip(CircleShape)
                                 .background(if (connected) Color.White else MaterialTheme.colorScheme.outline),
                         )
                     }
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = if (connected) "链路稳定，可直接同步通知 / 文件 / 剪贴板" else "正在搜索可用设备…",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (connected) Color.White else MaterialTheme.colorScheme.onSurface,
-                        )
-                        AnimatedVisibility(!connected) {
-                            ShimmerLine()
-                        }
-                    }
+                }
+                Text(
+                    text = headline,
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (connected) Color.White else MaterialTheme.colorScheme.onSurface,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SummaryTag(text = deviceName, active = connected)
+                    SummaryTag(text = deviceIp, active = connected)
+                    SummaryTag(text = capability, active = connected)
                 }
             }
         }
@@ -175,39 +158,23 @@ private fun StatusPill(
 }
 
 @Composable
-private fun ShimmerLine() {
-    val progress by rememberInfiniteTransition(label = "shimmerLine").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200),
-            repeatMode = RepeatMode.Restart,
+private fun SummaryTag(
+    text: String,
+    active: Boolean,
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (active) Color.White.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (active) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
         ),
-        label = "lineProgress",
-    )
-    val shimmerColors = listOf(
-        Color.Transparent,
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.72f),
-        Color.Transparent,
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(10.dp)
-            .alpha(0.85f),
     ) {
-        drawLine(
-            brush = Brush.horizontalGradient(
-                colors = shimmerColors,
-                startX = size.width * (progress - 1f),
-                endX = size.width * progress,
-            ),
-            start = androidx.compose.ui.geometry.Offset.Zero.copy(y = size.height / 2),
-            end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
-            strokeWidth = size.height,
-            cap = StrokeCap.Round,
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

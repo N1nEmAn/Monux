@@ -1,13 +1,13 @@
 package com.monux.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Folder
@@ -76,7 +76,7 @@ fun HomeScreen(
     val connected = state.connectionStatus == "已连接"
 
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Adaptive(minSize = 168.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 20.dp,
@@ -88,10 +88,41 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionHeader(
+                title = "连接概览",
+                subtitle = "先看连接状态与跨端关键提示",
+            )
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            HighlightCard(
+                overline = if (state.fileTransfer.active) "实时传输" else "屏幕桥接",
+                title = if (state.fileTransfer.active) "${state.fileTransfer.fileName} 传输中" else if (state.screen.enabled) "投屏已启动" else "投屏待命",
+                subtitle = if (state.fileTransfer.active) {
+                    "同步到 Linux · ${(state.fileTransfer.progress * 100).toInt()}%"
+                } else {
+                    "分辨率上限 ${state.screen.maxSize} · 码率 ${state.screen.bitrate}"
+                },
+                icon = if (state.fileTransfer.active) Icons.Rounded.Description else Icons.Rounded.Wallpaper,
+                badgeText = if (state.fileTransfer.active) "进行中" else if (state.screen.enabled) "scrcpy" else "可启动",
+                tone = if (state.fileTransfer.active) HighlightCardTone.File else HighlightCardTone.Brand,
+                onClick = if (!state.fileTransfer.active && !state.screen.enabled) {
+                    { MainService.toggleScreenMirror() }
+                } else {
+                    null
+                },
+            )
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) {
             ConnectionCard(
                 deviceName = state.deviceName,
                 deviceIp = state.deviceIp,
                 status = state.connectionStatus,
+            )
+        }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionHeader(
+                title = "重点状态",
+                subtitle = "保留最关键的两张概览卡，减少首屏竞争注意力",
             )
         }
         item {
@@ -134,33 +165,6 @@ fun HomeScreen(
                     }
                 )
             }
-        }
-        if (state.fileTransfer.active) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                HighlightCard(
-                    overline = "实时传输",
-                    title = "文件传输中",
-                    subtitle = "${state.fileTransfer.fileName} · ${(state.fileTransfer.progress * 100).toInt()}%",
-                    icon = Icons.Rounded.Description,
-                    badgeText = "进行中",
-                    tone = HighlightCardTone.File,
-                )
-            }
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            HighlightCard(
-                overline = "屏幕桥接",
-                title = if (state.screen.enabled) "投屏已启动" else "投屏待命",
-                subtitle = "分辨率上限 ${state.screen.maxSize} · 码率 ${state.screen.bitrate}",
-                icon = Icons.Rounded.Wallpaper,
-                badgeText = if (state.screen.enabled) "scrcpy" else "可启动",
-                tone = HighlightCardTone.Brand,
-                onClick = {
-                    if (!state.screen.enabled) {
-                        MainService.toggleScreenMirror()
-                    }
-                },
-            )
         }
     }
 }
