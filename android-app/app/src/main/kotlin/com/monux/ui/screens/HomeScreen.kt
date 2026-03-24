@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PhoneAndroid
@@ -63,6 +64,13 @@ fun buildFeatureToggles(state: ConnectionState): List<FeatureToggle> = listOf(
         subtitle = if (state.screen.enabled) "scrcpy 已启动" else "Quick Settings / UI 控制",
         icon = Icons.Rounded.Wallpaper,
         enabled = state.featureFlags.screen,
+    ),
+    FeatureToggle(
+        key = "remoteInput",
+        name = "远程输入",
+        subtitle = "文本 / 语音输入到 Linux 焦点窗口",
+        icon = Icons.Rounded.Edit,
+        enabled = state.featureFlags.remoteInput,
     ),
 )
 
@@ -130,7 +138,7 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 icon = Icons.Rounded.Sync,
                 title = "已启用",
-                value = "$enabledCount/5",
+                value = "$enabledCount/6",
                 subtitle = "核心能力常驻",
             )
         }
@@ -146,7 +154,7 @@ fun HomeScreen(
         item(span = { GridItemSpan(maxLineSpan) }) {
             SectionHeader(
                 title = "能力矩阵",
-                subtitle = "像系统设置一样快速访问通知、剪贴板、短信、文件与投屏",
+                subtitle = "像系统设置一样快速访问通知、剪贴板、短信、文件、投屏与输入",
             )
         }
         items(toggles, key = { it.key }) { feature ->
@@ -161,7 +169,8 @@ fun HomeScreen(
                         "clipboard" -> current.copy(clipboard = enabled)
                         "sms" -> current.copy(sms = enabled)
                         "file" -> current.copy(file = enabled)
-                        else -> current.copy(screen = enabled)
+                        "screen" -> current.copy(screen = enabled)
+                        else -> current.copy(remoteInput = enabled)
                     }
                 )
             }

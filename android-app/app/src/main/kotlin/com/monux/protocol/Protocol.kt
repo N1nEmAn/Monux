@@ -21,6 +21,9 @@ object Protocol {
     const val TYPE_SCREEN_START = "screen.start"
     const val TYPE_SCREEN_STOP = "screen.stop"
     const val TYPE_SCREEN_STARTED = "screen.started"
+    const val TYPE_INPUT_TEXT = "input.text"
+    const val TYPE_INPUT_KEY = "input.key"
+    const val TYPE_INPUT_VOICE = "input.voice"
 
     fun hello(deviceName: String, platform: String): JSONObject {
         return envelope(
@@ -129,6 +132,18 @@ object Protocol {
 
     fun screenStop(): JSONObject {
         return envelope(TYPE_SCREEN_STOP, JSONObject())
+    }
+
+    fun inputText(text: String): JSONObject {
+        return envelope(TYPE_INPUT_TEXT, JSONObject().put("text", text))
+    }
+
+    fun inputKey(key: String): JSONObject {
+        return envelope(TYPE_INPUT_KEY, JSONObject().put("key", key))
+    }
+
+    fun inputVoice(text: String): JSONObject {
+        return envelope(TYPE_INPUT_VOICE, JSONObject().put("text", text))
     }
 
     private fun envelope(type: String, payload: JSONObject): JSONObject {

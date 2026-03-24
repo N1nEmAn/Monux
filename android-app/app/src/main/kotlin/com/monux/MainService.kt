@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
+import android.service.quicksettings.TileService
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.monux.clipboard.ClipboardMonitor
@@ -266,7 +267,15 @@ class MainService : Service() {
         fun stateFlow(): StateFlow<ConnectionState> = state.asStateFlow()
 
         fun updateFeatureFlags(flags: FeatureFlags) {
+            val previous = state.value.featureFlags
             state.value = state.value.copy(featureFlags = flags)
+            val service = instance ?: return
+            if (previous.screen != flags.screen) {
+                TileService.requestListeningState(service, android.content.ComponentName(service, com.monux.screen.ScreenTileService::class.java))
+            }
+            if (previous.remoteInput != flags.remoteInput) {
+                TileService.requestListeningState(service, android.content.ComponentName(service, com.monux.input.InputTileService::class.java))
+            }
         }
 
         fun updateNotificationAccess(granted: Boolean) {
@@ -292,6 +301,9 @@ class MainService : Service() {
 
         fun toggleScreenMirror() {
             val service = instance ?: return
+            if (!state.value.featureFlags.screen) {
+                return
+            }
             val current = state.value.screen
             if (current.enabled) {
                 service.screenSessionManager?.stop()
@@ -302,6 +314,27 @@ class MainService : Service() {
         }
 
         fun screenEnabled(): Boolean = state.value.screen.enabled
+
+        fun remoteInputEnabled(): Boolean = state.value.featureFlags.remoteInput
+
+        fun sendRemoteInputText(text: String, fromVoice: Boolean = false): Boolean {
+            val service = instance ?: return false
+            if (!state.value.featureFlags.remoteInput || text.isBlank() || service.webSocketServer?.hasConnections() != true) {
+                return false
+            }
+            val payload = if (fromVoice) Protocol.inputVoice(text) else Protocol.inputText(text)
+            service.webSocketServer?.broadcast(payload.toString())
+            return true
+        }
+
+        fun sendRemoteInputKey(key: String): Boolean {
+            val service = instance ?: return false
+            if (!state.value.featureFlags.remoteInput || key.isBlank() || service.webSocketServer?.hasConnections() != true) {
+                return false
+            }
+            service.webSocketServer?.broadcast(Protocol.inputKey(key).toString())
+            return true
+        }
 
         fun updateScreenConfig(maxSize: Int, bitrate: String) {
             state.value = state.value.copy(screen = state.value.screen.copy(maxSize = maxSize, bitrate = bitrate))

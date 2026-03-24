@@ -19,6 +19,7 @@ from websockets.client import WebSocketClientProtocol
 
 from handlers.clipboard import ClipboardPayload, write_clipboard
 from handlers.file import IncomingFileTransfer, ensure_target_dir, notify_file_received, write_chunk
+from handlers.input import press_key, type_text
 from handlers.screen import ScreenConfig, ScrcpyController
 from handlers.sms import mirror_sms, prompt_sms_reply
 from mdns_discover import discover_device
@@ -118,6 +119,9 @@ class MessageDispatcher:
             "file.error": self.handle_file_error,
             "screen.start": self.handle_screen_start,
             "screen.stop": self.handle_screen_stop,
+            "input.text": self.handle_input_text,
+            "input.key": self.handle_input_key,
+            "input.voice": self.handle_input_text,
             "file": self.handle_file,
             "hello": self.handle_hello,
             "hello_ack": self.handle_hello_ack,
@@ -246,6 +250,29 @@ class MessageDispatcher:
         self.dashboard.update(last_event=f"投屏停止：{detail}")
         if self._ws is not None:
             await self._ws.send(Envelope(type="screen.started", payload={"success": False, "message": detail}).to_json())
+
+    async def handle_input_text(self, message: Envelope) -> None:
+        text = str(message.payload.get("text", ""))
+        if not text:
+            return
+        success, detail = await asyncio.to_thread(type_text, text)
+        logging.info("input text success=%s detail=%s", success, detail)
+        snippet = text.replace("\n", " ")[:24]
+        if success:
+            self.dashboard.update(last_event=f"远程输入：{snippet}")
+        else:
+            self.dashboard.update(last_event=f"输入失败：{detail}")
+
+    async def handle_input_key(self, message: Envelope) -> None:
+        key = str(message.payload.get("key", ""))
+        if not key:
+            return
+        success, detail = await asyncio.to_thread(press_key, key)
+        logging.info("input key success=%s key=%s detail=%s", success, key, detail)
+        if success:
+            self.dashboard.update(last_event=f"远程按键：{key}")
+        else:
+            self.dashboard.update(last_event=f"按键失败：{detail}")
 
     async def handle_hello(self, message: Envelope) -> None:
         device_name = str(message.payload.get("device_name", "unknown"))

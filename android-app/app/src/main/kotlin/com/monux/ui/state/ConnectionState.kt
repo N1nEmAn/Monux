@@ -6,6 +6,7 @@ data class FeatureFlags(
     val sms: Boolean = false,
     val file: Boolean = false,
     val screen: Boolean = false,
+    val remoteInput: Boolean = false,
 )
 
 data class FileTransferState(
