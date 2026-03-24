@@ -66,9 +66,9 @@ fun ConnectionCard(
     )
     val connectedBrush = Brush.linearGradient(
         listOf(
-            Color(0xFF0E8F63),
-            Color(0xFF3DBB82),
-            Color(0xFF79E5B1),
+            MaterialTheme.colorScheme.tertiary,
+            MaterialTheme.colorScheme.tertiaryContainer,
+            MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.72f),
         )
     )
     val disconnectedBrush = Brush.linearGradient(

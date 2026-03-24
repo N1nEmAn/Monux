@@ -113,7 +113,7 @@ fun SettingsScreen(
                 PreferenceRow(
                     title = "设计语言",
                     subtitle = "Material 3 / Reply 风格卡片 / 超椭圆图标",
-                    trailing = { SettingValueChip("v0.1.2") },
+                    trailing = { SettingValueChip("v0.1.3") },
                 )
                 PreferenceDivider()
                 PreferenceRow(
