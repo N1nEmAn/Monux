@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/app-icon.png" alt="Monux Icon" width="120" height="120" style="border-radius:24px;margin:16px 0" />
+<img src="assets/app-icon-v2.png" alt="Monux Icon" width="120" height="120" style="border-radius:24px;margin:16px 0" />
 
 <!-- fallback SVG -->
 <!--
