@@ -118,7 +118,7 @@ fun SettingsScreen(
                 PreferenceRow(
                     title = "设计语言",
                     subtitle = "更克制的 Material 3 扁平与色阶层级",
-                    trailing = { SettingValueChip("v0.1.3") },
+                    trailing = { SettingValueChip("v0.1.4") },
                 )
                 PreferenceDivider()
                 PreferenceRow(

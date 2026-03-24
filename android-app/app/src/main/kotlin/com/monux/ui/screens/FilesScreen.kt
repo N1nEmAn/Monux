@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.monux.ui.components.HighlightCard
 import com.monux.ui.components.HighlightCardTone
 import com.monux.ui.components.OverviewCard

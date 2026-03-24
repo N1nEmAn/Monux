@@ -40,7 +40,7 @@ python3 main.py
 ### Android app
 - Gradle 插件：Android Application `8.4.1`，Kotlin Android `1.9.24`
 - `compileSdk/targetSdk = 34`，`minSdk = 29`
-- 当前 `versionName = "0.1.3"`，`versionCode = 6`
+- 当前 `versionName = "0.1.4"`，`versionCode = 7`
 
 ### 关键运行依赖
 - Linux：`notify-send`、`wl-copy/wl-paste` 或 `xclip/xsel`、`scrcpy`、`xdotool` 或 `ydotool`、`rofi`
