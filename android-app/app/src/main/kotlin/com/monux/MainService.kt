@@ -69,9 +69,14 @@ class MainService : Service() {
         screenSessionManager = ScreenSessionManager(
             sendMessage = { payload -> broadcastToLinux(payload, "screen session") },
         )
-        clipboardMonitor = ClipboardMonitor(clipboardManager!!) { text ->
-            if (state.value.featureFlags.clipboard) {
-                clipboardSyncManager?.syncToLinux(text)
+        clipboardMonitor = ClipboardMonitor(
+            context = this,
+            clipboardManager = clipboardManager!!,
+        ) { text ->
+            if (!state.value.featureFlags.clipboard) {
+                true
+            } else {
+                clipboardSyncManager?.syncToLinux(text) == true
             }
         }
         clipboardMonitor?.start()
@@ -120,9 +125,14 @@ class MainService : Service() {
                     Log.i(TAG, "linux daemon connected remote=$remote")
                 },
                 onClientDisconnected = { reason ->
-                    state.value = state.value.copy(connectionStatus = if (webSocketServer == null) "未连接" else "等待重连")
+                    val newStatus = when {
+                        webSocketServer == null -> "未连接"
+                        webSocketServer!!.hasConnections() -> "已连接"
+                        else -> "等待重连"
+                    }
+                    state.value = state.value.copy(connectionStatus = newStatus)
                     refreshNotification()
-                    Log.i(TAG, "linux daemon disconnected reason=$reason")
+                    Log.i(TAG, "linux daemon disconnected reason=$reason newStatus=$newStatus")
                 },
                 onMessageReceived = { message -> handleIncomingMessage(message) },
                 onPeerHello = { peerName, _ ->
@@ -130,10 +140,11 @@ class MainService : Service() {
                     refreshNotification()
                 },
             )
-            server.startServer()
             webSocketServer = server
             state.value = state.value.copy(connectionStatus = "等待连接")
+            server.startServer()
         }.onFailure {
+            webSocketServer = null
             state.value = state.value.copy(connectionStatus = "服务启动失败")
             Log.e(TAG, "websocket server failed", it)
         }
